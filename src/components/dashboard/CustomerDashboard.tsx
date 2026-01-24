@@ -14,9 +14,85 @@ import {
   SkipForward,
   RefreshCw,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Lock
 } from 'lucide-react';
 import type { Subscription, DailyMeal, Address, Meal, PlanType, MealTime } from '@/types';
+
+type CutoffStatus = 'OPEN' | 'LOCKED';
+
+const useCutoffTimer = () => {
+  const [timeLeft, setTimeLeft] = useState<string>('');
+  const [status, setStatus] = useState<CutoffStatus>('OPEN');
+
+  useEffect(() => {
+    const calculateTimeLeft = () => {
+      const now = new Date();
+      const cutoff = new Date();
+      cutoff.setHours(20, 0, 0, 0); // 8 PM today
+
+      const diff = cutoff.getTime() - now.getTime();
+
+      if (diff <= 0) {
+        setStatus('LOCKED');
+        setTimeLeft('');
+        return;
+      }
+
+      setStatus('OPEN');
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      setTimeLeft(
+        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+      );
+    };
+
+    calculateTimeLeft();
+    const interval = setInterval(calculateTimeLeft, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return { timeLeft, status };
+};
+
+const CutoffBanner = () => {
+  const { timeLeft, status } = useCutoffTimer();
+
+  if (status === 'LOCKED') {
+    return (
+      <div className="mb-6 p-4 rounded-xl bg-destructive/10 border border-destructive/20 flex items-center gap-3 animate-slide-up">
+        <div className="w-10 h-10 rounded-full bg-destructive/20 flex items-center justify-center">
+          <Lock className="w-5 h-5 text-destructive" />
+        </div>
+        <div>
+          <p className="font-medium text-destructive">Tomorrow's meal is locked</p>
+          <p className="text-sm text-destructive/80">Changes will apply from day after tomorrow</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-6 p-4 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-between animate-slide-up">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center">
+          <Clock className="w-5 h-5 text-accent" />
+        </div>
+        <div>
+          <p className="font-medium text-accent">Meal modifications open</p>
+          <p className="text-sm text-accent/80">You can skip or swap tomorrow's meal</p>
+        </div>
+      </div>
+      <div className="text-right">
+        <p className="text-xs text-accent/70 uppercase tracking-wide">Time left</p>
+        <p className="font-mono text-xl font-bold text-accent">{timeLeft}</p>
+      </div>
+    </div>
+  );
+};
 
 export const CustomerDashboard = () => {
   const { user } = useAuth();
@@ -251,7 +327,10 @@ export const CustomerDashboard = () => {
     <div className="container py-8 px-4">
       <div className="max-w-4xl mx-auto">
         <h1 className="font-display text-3xl font-bold mb-2">Hey, {user?.name}!</h1>
-        <p className="text-muted-foreground mb-8">Here's what's cooking for you</p>
+        <p className="text-muted-foreground mb-6">Here's what's cooking for you</p>
+
+        {/* Cutoff Status Banner */}
+        <CutoffBanner />
 
         {/* Subscription Status */}
         <Card className="mb-6 shadow-card animate-slide-up">
