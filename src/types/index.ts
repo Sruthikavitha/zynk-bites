@@ -12,10 +12,49 @@ export interface User {
   createdAt: string;
 }
 
+export interface Address {
+  street: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  landmark?: string;
+}
+
 export interface Customer extends User {
   role: 'customer';
   subscription?: Subscription;
-  address?: Address;
+  homeAddress?: Address;
+  workAddress?: Address;
+  selectedChefId?: string;
+}
+
+// Nutritional info for dishes
+export interface NutritionalInfo {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+// Customization options for dishes
+export interface CustomizationOption {
+  id: string;
+  name: string;
+  type: 'add' | 'remove' | 'adjust';
+}
+
+// Chef's dish
+export interface Dish {
+  id: string;
+  chefId: string;
+  name: string;
+  description: string;
+  category: 'veg' | 'non-veg';
+  nutritionalInfo: NutritionalInfo;
+  allowsCustomization: boolean;
+  customizationOptions: CustomizationOption[];
+  imageUrl?: string;
+  isActive: boolean;
 }
 
 export interface Chef extends User {
@@ -23,6 +62,11 @@ export interface Chef extends User {
   status: 'pending' | 'approved' | 'rejected';
   specialty?: string;
   bio?: string;
+  kitchenLocation?: Address;
+  serviceArea?: string;
+  deliverySlots?: string[];
+  rating?: number;
+  totalOrders?: number;
 }
 
 export interface DeliveryPartner extends User {
@@ -35,16 +79,9 @@ export interface Admin extends User {
   role: 'admin';
 }
 
-export interface Address {
-  street: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  landmark?: string;
-}
-
 export type PlanType = 'basic' | 'standard' | 'premium';
 export type MealTime = 'lunch' | 'dinner' | 'both';
+export type AddressType = 'home' | 'work';
 
 export interface Subscription {
   id: string;
@@ -55,8 +92,11 @@ export interface Subscription {
   endDate?: string;
   status: 'active' | 'paused' | 'cancelled';
   address: Address;
+  activeAddressType: AddressType;
+  selectedChefId?: string;
 }
 
+// Legacy Meal type (for backwards compatibility)
 export interface Meal {
   id: string;
   name: string;
@@ -67,6 +107,12 @@ export interface Meal {
   isVegetarian: boolean;
 }
 
+// Selected customization for an order
+export interface SelectedCustomization {
+  optionId: string;
+  optionName: string;
+}
+
 export interface DailyMeal {
   id: string;
   date: string;
@@ -75,10 +121,15 @@ export interface DailyMeal {
   customerId: string;
   originalMealId: string;
   currentMealId: string;
+  originalDishId?: string;
+  currentDishId?: string;
   isSkipped: boolean;
   isSwapped: boolean;
-  status: 'scheduled' | 'preparing' | 'out_for_delivery' | 'delivered';
+  status: 'scheduled' | 'preparing' | 'ready' | 'out_for_delivery' | 'delivered';
   deliveryPartnerId?: string;
+  selectedCustomizations?: SelectedCustomization[];
+  deliveryAddressType?: AddressType;
+  isFinalized: boolean;
 }
 
 export interface Order {
@@ -93,6 +144,8 @@ export interface Order {
   status: 'pending' | 'preparing' | 'ready' | 'out_for_delivery' | 'delivered';
   date: string;
   mealTime: MealTime;
+  selectedCustomizations?: SelectedCustomization[];
+  dishId?: string;
 }
 
 export interface ApiResponse<T = any> {
@@ -106,6 +159,7 @@ export interface Database {
   users: User[];
   subscriptions: Subscription[];
   meals: Meal[];
+  dishes: Dish[];
   dailyMeals: DailyMeal[];
   orders: Order[];
 }

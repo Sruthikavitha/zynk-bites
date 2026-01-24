@@ -5,19 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { 
-  Calendar, 
-  MapPin, 
-  Clock, 
-  UtensilsCrossed,
-  SkipForward,
-  RefreshCw,
-  AlertCircle,
-  CheckCircle2,
-  Lock
+  Calendar, MapPin, Clock, UtensilsCrossed, SkipForward, RefreshCw,
+  AlertCircle, CheckCircle2, Lock, Home, Briefcase, ChefHat, Star,
+  Undo2, Settings
 } from 'lucide-react';
-import type { Subscription, DailyMeal, Address, Meal, PlanType, MealTime } from '@/types';
+import type { Subscription, DailyMeal, Address, Meal, PlanType, MealTime, Chef, Dish, Customer, AddressType } from '@/types';
 
 type CutoffStatus = 'OPEN' | 'LOCKED';
 
@@ -29,8 +24,7 @@ const useCutoffTimer = () => {
     const calculateTimeLeft = () => {
       const now = new Date();
       const cutoff = new Date();
-      cutoff.setHours(20, 0, 0, 0); // 8 PM today
-
+      cutoff.setHours(20, 0, 0, 0);
       const diff = cutoff.getTime() - now.getTime();
 
       if (diff <= 0) {
@@ -43,15 +37,11 @@ const useCutoffTimer = () => {
       const hours = Math.floor(diff / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-      setTimeLeft(
-        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-      );
+      setTimeLeft(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
     };
 
     calculateTimeLeft();
     const interval = setInterval(calculateTimeLeft, 1000);
-
     return () => clearInterval(interval);
   }, []);
 
@@ -68,7 +58,7 @@ const CutoffBanner = () => {
           <Lock className="w-5 h-5 text-destructive" />
         </div>
         <div>
-          <p className="font-medium text-destructive">Tomorrow's meal is locked</p>
+          <p className="font-medium text-destructive">Tomorrow's meal is finalized</p>
           <p className="text-sm text-destructive/80">Changes will apply from day after tomorrow</p>
         </div>
       </div>
@@ -82,12 +72,12 @@ const CutoffBanner = () => {
           <Clock className="w-5 h-5 text-accent" />
         </div>
         <div>
-          <p className="font-medium text-accent">Meal modifications open</p>
-          <p className="text-sm text-accent/80">You can skip or swap tomorrow's meal</p>
+          <p className="font-medium text-accent">Tomorrow's meal is editable</p>
+          <p className="text-sm text-accent/80">Skip, swap, or change address</p>
         </div>
       </div>
       <div className="text-right">
-        <p className="text-xs text-accent/70 uppercase tracking-wide">Time left</p>
+        <p className="text-xs text-accent/70 uppercase tracking-wide">Cutoff in</p>
         <p className="font-mono text-xl font-bold text-accent">{timeLeft}</p>
       </div>
     </div>
@@ -100,42 +90,46 @@ export const CustomerDashboard = () => {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [dailyMeals, setDailyMeals] = useState<DailyMeal[]>([]);
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
+  const [allDishes, setAllDishes] = useState<Dish[]>([]);
+  const [selectedChef, setSelectedChef] = useState<Chef | null>(null);
+  const [availableChefs, setAvailableChefs] = useState<Chef[]>([]);
   const [showSubscribe, setShowSubscribe] = useState(false);
+  const [showChefSelect, setShowChefSelect] = useState(false);
   const [canModify, setCanModify] = useState(api.canModifyMeal());
 
-  // Subscription form state
   const [plan, setPlan] = useState<PlanType>('standard');
   const [mealTime, setMealTime] = useState<MealTime>('lunch');
-  const [address, setAddress] = useState<Address>({
-    street: '',
-    city: '',
-    state: '',
-    zipCode: '',
-  });
+  const [address, setAddress] = useState<Address>({ street: '', city: '', state: '', zipCode: '' });
+  const [selectedChefId, setSelectedChefId] = useState<string>('');
+
+  const customer = user as Customer;
 
   useEffect(() => {
-    if (user) {
-      loadData();
-    }
+    if (user) loadData();
+    const interval = setInterval(() => setCanModify(api.canModifyMeal()), 1000);
+    return () => clearInterval(interval);
   }, [user]);
 
   const loadData = () => {
     if (!user) return;
     
     const subResponse = api.getSubscription(user.id);
-    if (subResponse.success) {
-      setSubscription(subResponse.data || null);
-    }
+    if (subResponse.success) setSubscription(subResponse.data || null);
 
     const mealsResponse = api.getCustomerMeals(user.id);
-    if (mealsResponse.success) {
-      setDailyMeals(mealsResponse.data || []);
-    }
+    if (mealsResponse.success) setDailyMeals(mealsResponse.data || []);
 
     const allMealsResponse = api.getAllMeals();
-    if (allMealsResponse.success) {
-      setAllMeals(allMealsResponse.data || []);
-    }
+    if (allMealsResponse.success) setAllMeals(allMealsResponse.data || []);
+
+    const dishesResponse = api.getAllDishes();
+    if (dishesResponse.success) setAllDishes(dishesResponse.data || []);
+
+    const chefsResponse = api.getApprovedChefs();
+    if (chefsResponse.success) setAvailableChefs(chefsResponse.data || []);
+
+    const chefResponse = api.getSelectedChef(user.id);
+    if (chefResponse.success) setSelectedChef(chefResponse.data || null);
 
     setCanModify(api.canModifyMeal());
   };
@@ -143,8 +137,7 @@ export const CustomerDashboard = () => {
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-
-    const response = api.subscribe(user.id, plan, mealTime, address);
+    const response = api.subscribe(user.id, plan, mealTime, address, 'home', selectedChefId || undefined);
     if (response.success) {
       toast({ title: 'Subscribed!', description: 'Your meal subscription is now active.' });
       setShowSubscribe(false);
@@ -165,6 +158,17 @@ export const CustomerDashboard = () => {
     }
   };
 
+  const handleUnskipMeal = (dailyMealId: string) => {
+    if (!user) return;
+    const response = api.unskipMeal(user.id, dailyMealId);
+    if (response.success) {
+      toast({ title: 'Meal Restored', description: 'Tomorrow\'s meal has been restored.' });
+      loadData();
+    } else {
+      toast({ title: 'Error', description: response.error, variant: 'destructive' });
+    }
+  };
+
   const handleSwapMeal = (dailyMealId: string, newMealId: string) => {
     if (!user) return;
     const response = api.swapMeal(user.id, dailyMealId, newMealId);
@@ -176,7 +180,32 @@ export const CustomerDashboard = () => {
     }
   };
 
+  const handleSwitchAddress = (addressType: AddressType) => {
+    if (!user) return;
+    const response = api.switchDeliveryAddress(user.id, addressType);
+    if (response.success) {
+      toast({ title: 'Address Updated', description: `Delivery switched to ${addressType} address.` });
+      loadData();
+    } else {
+      toast({ title: 'Error', description: response.error, variant: 'destructive' });
+    }
+  };
+
+  const handleSelectChef = (chefId: string) => {
+    if (!user) return;
+    const response = api.selectChef(user.id, chefId);
+    if (response.success) {
+      toast({ title: 'Chef Updated', description: 'Your chef has been changed.' });
+      setShowChefSelect(false);
+      loadData();
+    } else {
+      toast({ title: 'Error', description: response.error, variant: 'destructive' });
+    }
+  };
+
   const getMealName = (mealId: string) => {
+    const dish = allDishes.find(d => d.id === mealId);
+    if (dish) return dish.name;
     const meal = allMeals.find(m => m.id === mealId);
     return meal?.name || 'Unknown meal';
   };
@@ -184,11 +213,12 @@ export const CustomerDashboard = () => {
   const getTomorrowMeal = () => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().split('T')[0];
-    return dailyMeals.find(dm => dm.date === tomorrowStr);
+    return dailyMeals.find(dm => dm.date === tomorrow.toISOString().split('T')[0]);
   };
 
   const tomorrowMeal = getTomorrowMeal();
+  const chefDishes = selectedChef ? allDishes.filter(d => d.chefId === selectedChef.id) : [];
+  const availableMealsForSwap = chefDishes.length > 0 ? chefDishes : allMeals;
 
   const plans = [
     { id: 'basic', name: 'Basic', price: '₹2,999/mo', meals: '20 meals' },
@@ -196,13 +226,56 @@ export const CustomerDashboard = () => {
     { id: 'premium', name: 'Premium', price: '₹5,999/mo', meals: '60 meals' },
   ];
 
+  // Chef Selection Modal
+  if (showChefSelect) {
+    return (
+      <div className="container py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="font-display text-2xl font-bold">Select Your Chef</h1>
+            <Button variant="outline" onClick={() => setShowChefSelect(false)}>Cancel</Button>
+          </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            {availableChefs.map((chef) => {
+              const dishes = allDishes.filter(d => d.chefId === chef.id);
+              return (
+                <Card key={chef.id} className={`shadow-card cursor-pointer transition-all hover:shadow-elevated ${selectedChef?.id === chef.id ? 'ring-2 ring-primary' : ''}`}>
+                  <CardContent className="pt-6">
+                    <div className="flex items-start gap-4">
+                      <div className="w-14 h-14 rounded-xl bg-chef flex items-center justify-center">
+                        <ChefHat className="w-7 h-7 text-chef-foreground" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-display font-bold">{chef.name}</h3>
+                        <p className="text-sm text-muted-foreground">{chef.specialty}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Star className="w-4 h-4 text-warning fill-warning" />
+                          <span className="text-sm font-medium">{chef.rating || 4.5}</span>
+                          <span className="text-xs text-muted-foreground">• {chef.serviceArea}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">{dishes.length} dishes • Customization: {dishes.some(d => d.allowsCustomization) ? 'Yes' : 'No'}</p>
+                      </div>
+                    </div>
+                    <Button className="w-full mt-4 gradient-primary" onClick={() => handleSelectChef(chef.id)}>
+                      Select Chef
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // No subscription - show plans
   if (!subscription && !showSubscribe) {
     return (
       <div className="container py-8 px-4">
         <div className="max-w-4xl mx-auto">
           <h1 className="font-display text-3xl font-bold mb-2">Welcome, {user?.name}!</h1>
           <p className="text-muted-foreground mb-8">Ready to simplify your meals?</p>
-          
           <Card className="shadow-elevated animate-slide-up">
             <CardHeader>
               <CardTitle className="font-display">Start Your Subscription</CardTitle>
@@ -211,11 +284,8 @@ export const CustomerDashboard = () => {
             <CardContent>
               <div className="grid md:grid-cols-3 gap-4 mb-6">
                 {plans.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => { setPlan(p.id as PlanType); setShowSubscribe(true); }}
-                    className="p-6 rounded-xl border-2 border-border hover:border-primary transition-all text-left group hover:shadow-card"
-                  >
+                  <button key={p.id} onClick={() => { setPlan(p.id as PlanType); setShowSubscribe(true); }}
+                    className="p-6 rounded-xl border-2 border-border hover:border-primary transition-all text-left group hover:shadow-card">
                     <h3 className="font-display font-bold text-lg group-hover:text-primary transition-colors">{p.name}</h3>
                     <p className="text-2xl font-bold text-primary mt-2">{p.price}</p>
                     <p className="text-sm text-muted-foreground mt-1">{p.meals}</p>
@@ -229,6 +299,7 @@ export const CustomerDashboard = () => {
     );
   }
 
+  // Subscription form
   if (showSubscribe) {
     return (
       <div className="container py-8 px-4">
@@ -236,9 +307,7 @@ export const CustomerDashboard = () => {
           <Card className="shadow-elevated animate-slide-up">
             <CardHeader>
               <CardTitle className="font-display">Complete Subscription</CardTitle>
-              <CardDescription>
-                {plans.find(p => p.id === plan)?.name} Plan - {plans.find(p => p.id === plan)?.price}
-              </CardDescription>
+              <CardDescription>{plans.find(p => p.id === plan)?.name} Plan - {plans.find(p => p.id === plan)?.price}</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubscribe} className="space-y-4">
@@ -246,16 +315,8 @@ export const CustomerDashboard = () => {
                   <Label>Meal Time</Label>
                   <div className="grid grid-cols-3 gap-2">
                     {(['lunch', 'dinner', 'both'] as MealTime[]).map((time) => (
-                      <button
-                        key={time}
-                        type="button"
-                        onClick={() => setMealTime(time)}
-                        className={`py-2 px-4 rounded-lg border text-sm font-medium capitalize transition-all ${
-                          mealTime === time 
-                            ? 'border-primary bg-primary text-primary-foreground' 
-                            : 'border-border hover:border-primary'
-                        }`}
-                      >
+                      <button key={time} type="button" onClick={() => setMealTime(time)}
+                        className={`py-2 px-4 rounded-lg border text-sm font-medium capitalize transition-all ${mealTime === time ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:border-primary'}`}>
                         {time}
                       </button>
                     ))}
@@ -263,57 +324,28 @@ export const CustomerDashboard = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="street">Street Address</Label>
-                  <Input
-                    id="street"
-                    value={address.street}
-                    onChange={(e) => setAddress({...address, street: e.target.value})}
-                    placeholder="123 Main Street, Apt 4B"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="city">City</Label>
-                    <Input
-                      id="city"
-                      value={address.city}
-                      onChange={(e) => setAddress({...address, city: e.target.value})}
-                      placeholder="Mumbai"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="state">State</Label>
-                    <Input
-                      id="state"
-                      value={address.state}
-                      onChange={(e) => setAddress({...address, state: e.target.value})}
-                      placeholder="Maharashtra"
-                      required
-                    />
-                  </div>
+                  <Label>Select Chef</Label>
+                  <select className="w-full h-10 px-3 rounded-lg border border-border bg-background" value={selectedChefId} onChange={(e) => setSelectedChefId(e.target.value)}>
+                    <option value="">Choose a chef...</option>
+                    {availableChefs.map(chef => (
+                      <option key={chef.id} value={chef.id}>{chef.name} - {chef.specialty}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="zipCode">ZIP Code</Label>
-                  <Input
-                    id="zipCode"
-                    value={address.zipCode}
-                    onChange={(e) => setAddress({...address, zipCode: e.target.value})}
-                    placeholder="400001"
-                    required
-                  />
+                  <Label htmlFor="street">Delivery Address</Label>
+                  <Input id="street" value={address.street} onChange={(e) => setAddress({...address, street: e.target.value})} placeholder="Street address" required />
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Input value={address.city} onChange={(e) => setAddress({...address, city: e.target.value})} placeholder="City" required />
+                  <Input value={address.state} onChange={(e) => setAddress({...address, state: e.target.value})} placeholder="State" required />
+                </div>
+                <Input value={address.zipCode} onChange={(e) => setAddress({...address, zipCode: e.target.value})} placeholder="ZIP Code" required />
 
                 <div className="flex gap-3">
-                  <Button type="button" variant="outline" onClick={() => setShowSubscribe(false)} className="flex-1">
-                    Back
-                  </Button>
-                  <Button type="submit" className="flex-1 gradient-primary">
-                    Subscribe
-                  </Button>
+                  <Button type="button" variant="outline" onClick={() => setShowSubscribe(false)} className="flex-1">Back</Button>
+                  <Button type="submit" className="flex-1 gradient-primary">Subscribe</Button>
                 </div>
               </form>
             </CardContent>
@@ -323,41 +355,85 @@ export const CustomerDashboard = () => {
     );
   }
 
+  // Main Dashboard
   return (
     <div className="container py-8 px-4">
       <div className="max-w-4xl mx-auto">
         <h1 className="font-display text-3xl font-bold mb-2">Hey, {user?.name}!</h1>
         <p className="text-muted-foreground mb-6">Here's what's cooking for you</p>
 
-        {/* Cutoff Status Banner */}
         <CutoffBanner />
 
-        {/* Subscription Status */}
-        <Card className="mb-6 shadow-card animate-slide-up">
-          <CardContent className="pt-6">
-            <div className="flex flex-wrap items-center justify-between gap-4">
+        {/* Subscription & Chef Info */}
+        <div className="grid md:grid-cols-2 gap-4 mb-6">
+          <Card className="shadow-card">
+            <CardContent className="pt-6">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center">
                   <CheckCircle2 className="w-6 h-6 text-accent" />
                 </div>
                 <div>
                   <p className="font-medium">Active Subscription</p>
-                  <p className="text-sm text-muted-foreground capitalize">
-                    {subscription?.plan} Plan • {subscription?.mealTime} meals
-                  </p>
+                  <p className="text-sm text-muted-foreground capitalize">{subscription?.plan} Plan • {subscription?.mealTime} meals</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="w-4 h-4" />
-                <span>{subscription?.address.city}, {subscription?.address.state}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Tomorrow's Meal Card */}
+          <Card className="shadow-card">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-chef/20 flex items-center justify-center">
+                    <ChefHat className="w-6 h-6 text-chef" />
+                  </div>
+                  <div>
+                    <p className="font-medium">{selectedChef?.name || 'No Chef Selected'}</p>
+                    <p className="text-sm text-muted-foreground">{selectedChef?.specialty || 'Select a chef'}</p>
+                  </div>
+                </div>
+                {canModify && (
+                  <Button size="sm" variant="outline" onClick={() => setShowChefSelect(true)}>
+                    <Settings className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Address Toggle */}
+        {(customer?.homeAddress || customer?.workAddress) && (
+          <Card className="mb-6 shadow-card">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <MapPin className="w-5 h-5 text-primary" />
+                  <div>
+                    <p className="font-medium">Delivery to: {subscription?.activeAddressType || 'home'}</p>
+                    <p className="text-sm text-muted-foreground">{subscription?.address.street}, {subscription?.address.city}</p>
+                  </div>
+                </div>
+                {canModify && (
+                  <div className="flex gap-2">
+                    <Button size="sm" variant={subscription?.activeAddressType === 'home' ? 'default' : 'outline'} 
+                      onClick={() => handleSwitchAddress('home')} disabled={!customer?.homeAddress}>
+                      <Home className="w-4 h-4 mr-1" /> Home
+                    </Button>
+                    <Button size="sm" variant={subscription?.activeAddressType === 'work' ? 'default' : 'outline'}
+                      onClick={() => handleSwitchAddress('work')} disabled={!customer?.workAddress}>
+                      <Briefcase className="w-4 h-4 mr-1" /> Work
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Tomorrow's Meal */}
         {tomorrowMeal && (
-          <Card className="mb-6 shadow-elevated animate-slide-up border-2 border-primary/20">
+          <Card className="mb-6 shadow-elevated border-2 border-primary/20">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
@@ -365,24 +441,21 @@ export const CustomerDashboard = () => {
                     <Calendar className="w-5 h-5 text-primary" />
                     Tomorrow's Meal
                   </CardTitle>
-                  <CardDescription className="flex items-center gap-1 mt-1">
-                    <Clock className="w-3 h-3" />
-                    {canModify ? 'Modifications allowed until 8 PM' : 'Meal locked for delivery'}
-                  </CardDescription>
+                  <CardDescription>{canModify ? 'Modifications allowed until 8 PM' : 'Meal finalized for delivery'}</CardDescription>
                 </div>
-                {!canModify && (
-                  <div className="flex items-center gap-1 px-3 py-1 bg-warning/10 text-warning rounded-full text-sm">
-                    <AlertCircle className="w-4 h-4" />
-                    Locked
-                  </div>
-                )}
+                {!canModify && <Badge variant="destructive"><Lock className="w-3 h-3 mr-1" />Locked</Badge>}
               </div>
             </CardHeader>
             <CardContent>
               {tomorrowMeal.isSkipped ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <SkipForward className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p>This meal has been skipped</p>
+                <div className="text-center py-8">
+                  <SkipForward className="w-12 h-12 mx-auto mb-2 text-muted-foreground opacity-50" />
+                  <p className="text-muted-foreground">This meal has been skipped</p>
+                  {canModify && (
+                    <Button className="mt-4" variant="outline" onClick={() => handleUnskipMeal(tomorrowMeal.id)}>
+                      <Undo2 className="w-4 h-4 mr-2" />Restore Meal
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <>
@@ -391,42 +464,22 @@ export const CustomerDashboard = () => {
                       <UtensilsCrossed className="w-8 h-8 text-primary-foreground" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-display font-bold text-lg">
-                        {getMealName(tomorrowMeal.currentMealId)}
-                      </h3>
-                      {tomorrowMeal.isSwapped && (
-                        <p className="text-sm text-accent">Swapped from original</p>
-                      )}
+                      <h3 className="font-display font-bold text-lg">{getMealName(tomorrowMeal.currentMealId)}</h3>
+                      {tomorrowMeal.isSwapped && <Badge variant="secondary">Swapped</Badge>}
                     </div>
                   </div>
-
                   {canModify && (
                     <div className="flex gap-3">
-                      <Button 
-                        variant="outline" 
-                        className="flex-1"
-                        onClick={() => handleSkipMeal(tomorrowMeal.id)}
-                      >
-                        <SkipForward className="w-4 h-4 mr-2" />
-                        Skip Meal
+                      <Button variant="outline" className="flex-1" onClick={() => handleSkipMeal(tomorrowMeal.id)}>
+                        <SkipForward className="w-4 h-4 mr-2" />Skip
                       </Button>
-                      <div className="flex-1">
-                        <select
-                          className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm"
-                          onChange={(e) => handleSwapMeal(tomorrowMeal.id, e.target.value)}
-                          value=""
-                        >
-                          <option value="" disabled>Swap with...</option>
-                          {allMeals
-                            .filter(m => m.id !== tomorrowMeal.currentMealId)
-                            .map(meal => (
-                              <option key={meal.id} value={meal.id}>
-                                {meal.name}
-                              </option>
-                            ))
-                          }
-                        </select>
-                      </div>
+                      <select className="flex-1 h-10 px-3 rounded-lg border border-border bg-background text-sm"
+                        onChange={(e) => handleSwapMeal(tomorrowMeal.id, e.target.value)} value="">
+                        <option value="" disabled>Swap with...</option>
+                        {availableMealsForSwap.filter(m => m.id !== tomorrowMeal.currentMealId).map(meal => (
+                          <option key={meal.id} value={meal.id}>{meal.name}</option>
+                        ))}
+                      </select>
                     </div>
                   )}
                 </>
@@ -437,31 +490,26 @@ export const CustomerDashboard = () => {
 
         {/* Upcoming Meals */}
         <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle className="font-display">Upcoming Meals</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle className="font-display">Upcoming Meals</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {dailyMeals
-                .filter(dm => !dm.isSkipped)
-                .slice(0, 7)
-                .map((meal) => (
-                  <div key={meal.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <UtensilsCrossed className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm">{getMealName(meal.currentMealId)}</p>
-                        <p className="text-xs text-muted-foreground capitalize">{meal.mealTime}</p>
-                      </div>
+              {dailyMeals.filter(dm => !dm.isSkipped).slice(0, 7).map((meal) => (
+                <div key={meal.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <UtensilsCrossed className="w-5 h-5 text-primary" />
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium">{new Date(meal.date).toLocaleDateString('en-US', { weekday: 'short' })}</p>
-                      <p className="text-xs text-muted-foreground">{meal.date}</p>
+                    <div>
+                      <p className="font-medium text-sm">{getMealName(meal.currentMealId)}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{meal.mealTime}</p>
                     </div>
                   </div>
-                ))}
+                  <div className="text-right">
+                    <p className="text-sm font-medium">{new Date(meal.date).toLocaleDateString('en-US', { weekday: 'short' })}</p>
+                    <p className="text-xs text-muted-foreground">{meal.date}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
