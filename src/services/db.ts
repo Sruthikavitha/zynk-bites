@@ -11,6 +11,7 @@ import type {
   Chef,
   Subscription, 
   Meal, 
+  Dish,
   DailyMeal, 
   Order,
   Address
@@ -28,6 +29,158 @@ const sampleMeals: Meal[] = [
   { id: 'meal-6', name: 'Thai Green Curry', description: 'Coconut-based curry with vegetables and jasmine rice', category: 'Asian', isVegetarian: true, calories: 520 },
   { id: 'meal-7', name: 'Chicken Biryani', description: 'Aromatic basmati rice layered with spiced chicken', category: 'Biryani', isVegetarian: false, calories: 680 },
   { id: 'meal-8', name: 'Veg Biryani', description: 'Fragrant rice with mixed vegetables and herbs', category: 'Biryani', isVegetarian: true, calories: 520 },
+];
+
+// Sample chef with dishes
+const sampleChefs: Chef[] = [
+  {
+    id: 'chef-sample-1',
+    email: 'chef.priya@zynk.com',
+    password: 'chef123',
+    name: 'Chef Priya Sharma',
+    role: 'chef',
+    status: 'approved',
+    specialty: 'North Indian',
+    bio: 'Award-winning chef with 10 years experience in authentic North Indian cuisine',
+    kitchenLocation: { street: 'Koramangala 5th Block', city: 'Bangalore', state: 'Karnataka', zipCode: '560095' },
+    serviceArea: 'Koramangala, HSR Layout, Indiranagar',
+    deliverySlots: ['lunch', 'dinner'],
+    rating: 4.8,
+    totalOrders: 1250,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'chef-sample-2',
+    email: 'chef.arjun@zynk.com',
+    password: 'chef123',
+    name: 'Chef Arjun Patel',
+    role: 'chef',
+    status: 'approved',
+    specialty: 'South Indian & Continental',
+    bio: 'Fusion cuisine expert bringing together traditional and modern flavors',
+    kitchenLocation: { street: 'Whitefield Main Road', city: 'Bangalore', state: 'Karnataka', zipCode: '560066' },
+    serviceArea: 'Whitefield, Marathahalli, ITPL',
+    deliverySlots: ['lunch', 'dinner'],
+    rating: 4.6,
+    totalOrders: 890,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'chef-sample-3',
+    email: 'chef.meera@zynk.com',
+    password: 'chef123',
+    name: 'Chef Meera Krishnan',
+    role: 'chef',
+    status: 'approved',
+    specialty: 'Healthy & Keto',
+    bio: 'Certified nutritionist chef specializing in healthy, low-carb meals',
+    kitchenLocation: { street: 'JP Nagar 6th Phase', city: 'Bangalore', state: 'Karnataka', zipCode: '560078' },
+    serviceArea: 'JP Nagar, Jayanagar, BTM Layout',
+    deliverySlots: ['lunch'],
+    rating: 4.9,
+    totalOrders: 650,
+    createdAt: new Date().toISOString(),
+  },
+];
+
+// Sample dishes
+const sampleDishes: Dish[] = [
+  // Chef Priya's dishes
+  {
+    id: 'dish-1',
+    chefId: 'chef-sample-1',
+    name: 'Butter Chicken Thali',
+    description: 'Creamy butter chicken with naan, rice, and dal',
+    category: 'non-veg',
+    nutritionalInfo: { calories: 750, protein: 35, carbs: 65, fat: 28 },
+    allowsCustomization: true,
+    customizationOptions: [
+      { id: 'c1', name: 'Extra rice', type: 'add' },
+      { id: 'c2', name: 'Less spice', type: 'adjust' },
+      { id: 'c3', name: 'No onion/garlic', type: 'remove' },
+    ],
+    isActive: true,
+  },
+  {
+    id: 'dish-2',
+    chefId: 'chef-sample-1',
+    name: 'Paneer Butter Masala',
+    description: 'Rich and creamy paneer curry with aromatic spices',
+    category: 'veg',
+    nutritionalInfo: { calories: 620, protein: 22, carbs: 48, fat: 32 },
+    allowsCustomization: true,
+    customizationOptions: [
+      { id: 'c4', name: 'Extra protein (double paneer)', type: 'add' },
+      { id: 'c5', name: 'Less cream', type: 'adjust' },
+    ],
+    isActive: true,
+  },
+  {
+    id: 'dish-3',
+    chefId: 'chef-sample-1',
+    name: 'Dal Makhani Special',
+    description: 'Slow-cooked black lentils with butter and cream',
+    category: 'veg',
+    nutritionalInfo: { calories: 480, protein: 18, carbs: 52, fat: 18 },
+    allowsCustomization: false,
+    customizationOptions: [],
+    isActive: true,
+  },
+  // Chef Arjun's dishes
+  {
+    id: 'dish-4',
+    chefId: 'chef-sample-2',
+    name: 'Grilled Chicken Continental',
+    description: 'Herb-marinated chicken with mashed potatoes and veggies',
+    category: 'non-veg',
+    nutritionalInfo: { calories: 550, protein: 42, carbs: 35, fat: 22 },
+    allowsCustomization: true,
+    customizationOptions: [
+      { id: 'c6', name: 'Extra vegetables', type: 'add' },
+      { id: 'c7', name: 'No butter sauce', type: 'remove' },
+    ],
+    isActive: true,
+  },
+  {
+    id: 'dish-5',
+    chefId: 'chef-sample-2',
+    name: 'South Indian Thali',
+    description: 'Traditional sambar, rasam, kootu, poriyal with rice',
+    category: 'veg',
+    nutritionalInfo: { calories: 520, protein: 15, carbs: 78, fat: 12 },
+    allowsCustomization: true,
+    customizationOptions: [
+      { id: 'c8', name: 'Extra sambar', type: 'add' },
+      { id: 'c9', name: 'No curd', type: 'remove' },
+    ],
+    isActive: true,
+  },
+  // Chef Meera's dishes
+  {
+    id: 'dish-6',
+    chefId: 'chef-sample-3',
+    name: 'Keto Chicken Bowl',
+    description: 'Low-carb grilled chicken with cauliflower rice and avocado',
+    category: 'non-veg',
+    nutritionalInfo: { calories: 380, protein: 38, carbs: 8, fat: 22 },
+    allowsCustomization: true,
+    customizationOptions: [
+      { id: 'c10', name: 'Extra avocado', type: 'add' },
+      { id: 'c11', name: 'Extra cheese', type: 'add' },
+    ],
+    isActive: true,
+  },
+  {
+    id: 'dish-7',
+    chefId: 'chef-sample-3',
+    name: 'Quinoa Veggie Bowl',
+    description: 'Protein-rich quinoa with roasted vegetables and tahini',
+    category: 'veg',
+    nutritionalInfo: { calories: 420, protein: 16, carbs: 45, fat: 18 },
+    allowsCustomization: false,
+    customizationOptions: [],
+    isActive: true,
+  },
 ];
 
 // Initial database structure
@@ -50,9 +203,11 @@ const initialDatabase: Database = {
       phone: '+91-9876543210',
       createdAt: new Date().toISOString(),
     } as User,
+    ...sampleChefs,
   ],
   subscriptions: [],
   meals: sampleMeals,
+  dishes: sampleDishes,
   dailyMeals: [],
   orders: [],
 };
@@ -62,7 +217,12 @@ export const readDatabase = (): Database => {
   try {
     const data = localStorage.getItem(DB_KEY);
     if (data) {
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      // Ensure dishes array exists for backwards compatibility
+      if (!parsed.dishes) {
+        parsed.dishes = sampleDishes;
+      }
+      return parsed;
     }
     // Initialize with default data
     writeDatabase(initialDatabase);
@@ -208,6 +368,50 @@ export const findMealById = (id: string): Meal | undefined => {
   return db.meals.find(m => m.id === id);
 };
 
+// Dish helpers
+export const getAllDishes = (): Dish[] => {
+  const db = readDatabase();
+  return db.dishes || [];
+};
+
+export const getDishesByChefId = (chefId: string): Dish[] => {
+  const db = readDatabase();
+  return (db.dishes || []).filter(d => d.chefId === chefId && d.isActive);
+};
+
+export const findDishById = (id: string): Dish | undefined => {
+  const db = readDatabase();
+  return (db.dishes || []).find(d => d.id === id);
+};
+
+export const createDish = (dish: Dish): Dish => {
+  const db = readDatabase();
+  if (!db.dishes) db.dishes = [];
+  db.dishes.push(dish);
+  writeDatabase(db);
+  return dish;
+};
+
+export const updateDish = (id: string, updates: Partial<Dish>): Dish | undefined => {
+  const db = readDatabase();
+  if (!db.dishes) return undefined;
+  const index = db.dishes.findIndex(d => d.id === id);
+  if (index === -1) return undefined;
+  db.dishes[index] = { ...db.dishes[index], ...updates };
+  writeDatabase(db);
+  return db.dishes[index];
+};
+
+export const deleteDish = (id: string): boolean => {
+  const db = readDatabase();
+  if (!db.dishes) return false;
+  const index = db.dishes.findIndex(d => d.id === id);
+  if (index === -1) return false;
+  db.dishes[index].isActive = false;
+  writeDatabase(db);
+  return true;
+};
+
 // Chef helpers
 export const getPendingChefs = (): Chef[] => {
   const db = readDatabase();
@@ -229,6 +433,32 @@ export const getAdminStats = () => {
     pendingChefs: db.users.filter(u => u.role === 'chef' && (u as Chef).status === 'pending').length,
     totalOrders: db.orders.length,
   };
+};
+
+// Finalize tomorrow's orders at 8 PM
+export const finalizeTomorrowOrders = (): void => {
+  const db = readDatabase();
+  const tomorrow = getTomorrowDate();
+  
+  db.dailyMeals.forEach((dm, index) => {
+    if (dm.date === tomorrow && !dm.isFinalized) {
+      db.dailyMeals[index].isFinalized = true;
+    }
+  });
+  
+  writeDatabase(db);
+};
+
+// Get finalized orders for a chef
+export const getFinalizedOrdersForChef = (chefId: string): Order[] => {
+  const db = readDatabase();
+  const tomorrow = getTomorrowDate();
+  
+  return db.orders.filter(o => 
+    o.date === tomorrow && 
+    o.chefId === chefId &&
+    o.status !== 'delivered'
+  );
 };
 
 // Reset database (for testing)

@@ -14,7 +14,12 @@ import type {
   DailyMeal, 
   Order,
   PlanType,
-  MealTime
+  MealTime,
+  AddressType,
+  Dish,
+  NutritionalInfo,
+  CustomizationOption,
+  SelectedCustomization
 } from '@/types';
 import * as db from './db';
 
@@ -24,13 +29,15 @@ import * as db from './db';
 
 /**
  * POST /api/auth/register
- * Register a new customer
+ * Register a new customer with home and work addresses
  */
 export const registerCustomer = (
   email: string, 
   password: string, 
   name: string,
-  phone?: string
+  phone?: string,
+  homeAddress?: Address,
+  workAddress?: Address
 ): ApiResponse<Customer> => {
   // Check if user already exists
   const existingUser = db.findUserByEmail(email);
@@ -45,6 +52,8 @@ export const registerCustomer = (
     name,
     phone,
     role: 'customer',
+    homeAddress,
+    workAddress,
     createdAt: new Date().toISOString(),
   };
 
@@ -58,7 +67,7 @@ export const registerCustomer = (
 
 /**
  * POST /api/auth/login
- * Login user (any role)
+ * Login user (any role) - allows pending chefs to login
  */
 export const login = (email: string, password: string): ApiResponse<User> => {
   const user = db.findUserByEmail(email);
@@ -69,14 +78,6 @@ export const login = (email: string, password: string): ApiResponse<User> => {
   
   if (user.password !== password) {
     return { success: false, error: 'Invalid password' };
-  }
-
-  // For chef, check if approved
-  if (user.role === 'chef' && (user as Chef).status !== 'approved') {
-    return { 
-      success: false, 
-      error: 'Chef account pending approval. Please wait for admin approval.' 
-    };
   }
 
   return { 
@@ -92,13 +93,15 @@ export const login = (email: string, password: string): ApiResponse<User> => {
 
 /**
  * POST /api/customer/subscribe
- * Create a new subscription for customer
+ * Create a new subscription for customer with chef selection
  */
 export const subscribe = (
   customerId: string,
   plan: PlanType,
   mealTime: MealTime,
-  address: Address
+  address: Address,
+  addressType: AddressType = 'home',
+  selectedChefId?: string
 ): ApiResponse<Subscription> => {
   const user = db.findUserById(customerId);
   if (!user || user.role !== 'customer') {
@@ -117,20 +120,43 @@ export const subscribe = (
     plan,
     mealTime,
     address,
+    activeAddressType: addressType,
+    selectedChefId,
     startDate: db.getTomorrowDate(),
     status: 'active',
   };
 
   db.createSubscription(subscription);
 
-  // Create daily meals for next 7 days
+  // Update customer with selected chef
+  if (selectedChefId) {
+    db.updateUser(customerId, { selectedChefId } as Partial<Customer>);
+  }
+
+  // Get chef's dishes or fall back to sample meals
+  const chefDishes = selectedChefId ? db.getDishesByChefId(selectedChefId) : [];
   const meals = db.getAllMeals();
+
+  // Create daily meals for next 7 days
   for (let i = 1; i <= 7; i++) {
     const date = new Date();
     date.setDate(date.getDate() + i);
     const dateStr = date.toISOString().split('T')[0];
     
-    const randomMeal = meals[Math.floor(Math.random() * meals.length)];
+    let mealId: string;
+    let mealName: string;
+    let dishId: string | undefined;
+
+    if (chefDishes.length > 0) {
+      const randomDish = chefDishes[Math.floor(Math.random() * chefDishes.length)];
+      dishId = randomDish.id;
+      mealId = randomDish.id;
+      mealName = randomDish.name;
+    } else {
+      const randomMeal = meals[Math.floor(Math.random() * meals.length)];
+      mealId = randomMeal.id;
+      mealName = randomMeal.name;
+    }
     
     const dailyMeal: DailyMeal = {
       id: db.generateId('dm'),
@@ -138,11 +164,15 @@ export const subscribe = (
       mealTime,
       subscriptionId: subscription.id,
       customerId,
-      originalMealId: randomMeal.id,
-      currentMealId: randomMeal.id,
+      originalMealId: mealId,
+      currentMealId: mealId,
+      originalDishId: dishId,
+      currentDishId: dishId,
       isSkipped: false,
       isSwapped: false,
       status: 'scheduled',
+      deliveryAddressType: addressType,
+      isFinalized: false,
     };
     db.createDailyMeal(dailyMeal);
 
@@ -151,8 +181,10 @@ export const subscribe = (
       id: db.generateId('ord'),
       dailyMealId: dailyMeal.id,
       customerId,
-      mealId: randomMeal.id,
-      mealName: randomMeal.name,
+      chefId: selectedChefId,
+      mealId,
+      mealName,
+      dishId,
       customerName: user.name,
       deliveryAddress: address,
       status: 'pending',
@@ -186,6 +218,10 @@ export const skipMeal = (customerId: string, dailyMealId: string): ApiResponse<D
     return { success: false, error: 'Meal not found for tomorrow' };
   }
 
+  if (meal.isFinalized) {
+    return { success: false, error: 'Meal is already finalized' };
+  }
+
   if (meal.isSkipped) {
     return { success: false, error: 'Meal already skipped' };
   }
@@ -207,13 +243,47 @@ export const skipMeal = (customerId: string, dailyMealId: string): ApiResponse<D
 };
 
 /**
+ * POST /api/customer/unskip-meal
+ * Reverse a skipped meal (only before 8 PM)
+ */
+export const unskipMeal = (customerId: string, dailyMealId: string): ApiResponse<DailyMeal> => {
+  if (!db.isBeforeCutoff()) {
+    return { success: false, error: 'Meal locked. Changes allowed only before 8 PM.' };
+  }
+
+  const dailyMeals = db.findDailyMealsByCustomerId(customerId, db.getTomorrowDate());
+  const meal = dailyMeals.find(dm => dm.id === dailyMealId);
+
+  if (!meal) {
+    return { success: false, error: 'Meal not found for tomorrow' };
+  }
+
+  if (meal.isFinalized) {
+    return { success: false, error: 'Meal is already finalized' };
+  }
+
+  if (!meal.isSkipped) {
+    return { success: false, error: 'Meal is not skipped' };
+  }
+
+  const updated = db.updateDailyMeal(dailyMealId, { isSkipped: false });
+
+  return { 
+    success: true, 
+    data: updated!, 
+    message: 'Meal restored successfully' 
+  };
+};
+
+/**
  * POST /api/customer/swap-meal
  * Swap tomorrow's meal (only before 8 PM)
  */
 export const swapMeal = (
   customerId: string, 
   dailyMealId: string, 
-  newMealId: string
+  newMealId: string,
+  selectedCustomizations?: SelectedCustomization[]
 ): ApiResponse<DailyMeal> => {
   // Check time cutoff
   if (!db.isBeforeCutoff()) {
@@ -227,25 +297,44 @@ export const swapMeal = (
     return { success: false, error: 'Meal not found for tomorrow' };
   }
 
+  if (meal.isFinalized) {
+    return { success: false, error: 'Meal is already finalized' };
+  }
+
   if (meal.isSkipped) {
     return { success: false, error: 'Cannot swap a skipped meal' };
   }
 
+  // Check if it's a dish or meal
+  const newDish = db.findDishById(newMealId);
   const newMeal = db.findMealById(newMealId);
-  if (!newMeal) {
-    return { success: false, error: 'Selected meal not found' };
+
+  if (!newDish && !newMeal) {
+    return { success: false, error: 'Selected meal/dish not found' };
   }
 
-  const updated = db.updateDailyMeal(dailyMealId, { 
-    currentMealId: newMealId, 
-    isSwapped: true 
-  });
+  const updates: Partial<DailyMeal> = {
+    currentMealId: newMealId,
+    isSwapped: true,
+    selectedCustomizations,
+  };
+
+  if (newDish) {
+    updates.currentDishId = newMealId;
+  }
+
+  const updated = db.updateDailyMeal(dailyMealId, updates);
 
   // Update corresponding order
   const dbData = db.readDatabase();
   const order = dbData.orders.find(o => o.dailyMealId === dailyMealId);
   if (order) {
-    db.updateOrder(order.id, { mealId: newMealId, mealName: newMeal.name });
+    db.updateOrder(order.id, { 
+      mealId: newMealId, 
+      mealName: newDish?.name || newMeal?.name || 'Unknown',
+      dishId: newDish?.id,
+      selectedCustomizations,
+    });
   }
 
   return { 
@@ -257,22 +346,160 @@ export const swapMeal = (
 
 /**
  * PUT /api/customer/address
- * Update delivery address
+ * Update delivery address (only before 8 PM for tomorrow)
  */
 export const updateAddress = (
   customerId: string, 
-  address: Address
+  address: Address,
+  addressType: AddressType
 ): ApiResponse<Subscription> => {
+  if (!db.isBeforeCutoff()) {
+    return { success: false, error: 'Address change locked after 8 PM.' };
+  }
+
   const subscription = db.findSubscriptionByCustomerId(customerId);
   if (!subscription) {
     return { success: false, error: 'No active subscription found' };
   }
 
-  const updated = db.updateSubscription(subscription.id, { address });
+  const updated = db.updateSubscription(subscription.id, { 
+    address, 
+    activeAddressType: addressType 
+  });
+
+  // Update tomorrow's orders
+  const dbData = db.readDatabase();
+  const tomorrow = db.getTomorrowDate();
+  dbData.orders.forEach(order => {
+    if (order.customerId === customerId && order.date === tomorrow) {
+      db.updateOrder(order.id, { deliveryAddress: address });
+    }
+  });
+
   return { 
     success: true, 
     data: updated!, 
     message: 'Address updated successfully' 
+  };
+};
+
+/**
+ * PUT /api/customer/switch-address
+ * Switch between home and work address (only before 8 PM)
+ */
+export const switchDeliveryAddress = (
+  customerId: string,
+  addressType: AddressType
+): ApiResponse<Subscription> => {
+  if (!db.isBeforeCutoff()) {
+    return { success: false, error: 'Address change locked after 8 PM.' };
+  }
+
+  const user = db.findUserById(customerId) as Customer;
+  if (!user || user.role !== 'customer') {
+    return { success: false, error: 'Customer not found' };
+  }
+
+  const address = addressType === 'home' ? user.homeAddress : user.workAddress;
+  if (!address) {
+    return { success: false, error: `No ${addressType} address configured` };
+  }
+
+  const subscription = db.findSubscriptionByCustomerId(customerId);
+  if (!subscription) {
+    return { success: false, error: 'No active subscription found' };
+  }
+
+  const updated = db.updateSubscription(subscription.id, { 
+    address, 
+    activeAddressType: addressType 
+  });
+
+  // Update tomorrow's daily meal and order
+  const dbData = db.readDatabase();
+  const tomorrow = db.getTomorrowDate();
+  
+  dbData.dailyMeals.forEach(dm => {
+    if (dm.customerId === customerId && dm.date === tomorrow && !dm.isFinalized) {
+      db.updateDailyMeal(dm.id, { deliveryAddressType: addressType });
+    }
+  });
+
+  dbData.orders.forEach(order => {
+    if (order.customerId === customerId && order.date === tomorrow) {
+      db.updateOrder(order.id, { deliveryAddress: address });
+    }
+  });
+
+  return { 
+    success: true, 
+    data: updated!, 
+    message: `Delivery address switched to ${addressType}` 
+  };
+};
+
+/**
+ * PUT /api/customer/select-chef
+ * Change selected chef (only before 8 PM for tomorrow's meal)
+ */
+export const selectChef = (
+  customerId: string,
+  chefId: string
+): ApiResponse<{ chef: Chef; subscription: Subscription }> => {
+  if (!db.isBeforeCutoff()) {
+    return { success: false, error: 'Chef change locked after 8 PM.' };
+  }
+
+  const chef = db.findUserById(chefId) as Chef;
+  if (!chef || chef.role !== 'chef' || chef.status !== 'approved') {
+    return { success: false, error: 'Chef not found or not approved' };
+  }
+
+  const subscription = db.findSubscriptionByCustomerId(customerId);
+  if (!subscription) {
+    return { success: false, error: 'No active subscription found' };
+  }
+
+  // Update subscription with new chef
+  const updatedSub = db.updateSubscription(subscription.id, { selectedChefId: chefId });
+  db.updateUser(customerId, { selectedChefId: chefId } as Partial<Customer>);
+
+  // Update tomorrow's orders with new chef
+  const dbData = db.readDatabase();
+  const tomorrow = db.getTomorrowDate();
+  const chefDishes = db.getDishesByChefId(chefId);
+  
+  dbData.orders.forEach(order => {
+    if (order.customerId === customerId && order.date === tomorrow) {
+      // Assign a random dish from the new chef
+      if (chefDishes.length > 0) {
+        const randomDish = chefDishes[Math.floor(Math.random() * chefDishes.length)];
+        db.updateOrder(order.id, { 
+          chefId, 
+          mealId: randomDish.id,
+          mealName: randomDish.name,
+          dishId: randomDish.id,
+        });
+        
+        // Update daily meal too
+        const dailyMeal = dbData.dailyMeals.find(dm => dm.id === order.dailyMealId);
+        if (dailyMeal && !dailyMeal.isFinalized) {
+          db.updateDailyMeal(dailyMeal.id, {
+            currentMealId: randomDish.id,
+            currentDishId: randomDish.id,
+            isSwapped: true,
+          });
+        }
+      } else {
+        db.updateOrder(order.id, { chefId });
+      }
+    }
+  });
+
+  return { 
+    success: true, 
+    data: { chef, subscription: updatedSub! }, 
+    message: 'Chef updated successfully' 
   };
 };
 
@@ -294,20 +521,37 @@ export const getCustomerMeals = (customerId: string): ApiResponse<DailyMeal[]> =
   return { success: true, data: meals };
 };
 
+/**
+ * GET /api/customer/selected-chef
+ * Get customer's selected chef details
+ */
+export const getSelectedChef = (customerId: string): ApiResponse<Chef | null> => {
+  const subscription = db.findSubscriptionByCustomerId(customerId);
+  if (!subscription?.selectedChefId) {
+    return { success: true, data: null };
+  }
+
+  const chef = db.findUserById(subscription.selectedChefId) as Chef;
+  return { success: true, data: chef || null };
+};
+
 // ========================================
 // CHEF ENDPOINTS (GET/POST /api/chef/*)
 // ========================================
 
 /**
  * POST /api/chef/register
- * Register a new chef (status = pending)
+ * Register a new chef with kitchen location and service area
  */
 export const registerChef = (
   email: string,
   password: string,
   name: string,
   specialty?: string,
-  bio?: string
+  bio?: string,
+  kitchenLocation?: Address,
+  serviceArea?: string,
+  deliverySlots?: string[]
 ): ApiResponse<Chef> => {
   const existingUser = db.findUserByEmail(email);
   if (existingUser) {
@@ -323,6 +567,11 @@ export const registerChef = (
     status: 'pending',
     specialty,
     bio,
+    kitchenLocation,
+    serviceArea,
+    deliverySlots,
+    rating: 0,
+    totalOrders: 0,
     createdAt: new Date().toISOString(),
   };
 
@@ -330,13 +579,100 @@ export const registerChef = (
   return { 
     success: true, 
     data: chef, 
-    message: 'Chef registration submitted. Awaiting admin approval.' 
+    message: 'Chef registration submitted. You can now add your dishes while awaiting approval.' 
   };
 };
 
 /**
+ * POST /api/chef/dish
+ * Add a new dish (chef must be logged in)
+ */
+export const addDish = (
+  chefId: string,
+  name: string,
+  description: string,
+  category: 'veg' | 'non-veg',
+  nutritionalInfo: NutritionalInfo,
+  allowsCustomization: boolean,
+  customizationOptions: CustomizationOption[]
+): ApiResponse<Dish> => {
+  const chef = db.findUserById(chefId) as Chef;
+  if (!chef || chef.role !== 'chef') {
+    return { success: false, error: 'Chef not found' };
+  }
+
+  const dish: Dish = {
+    id: db.generateId('dish'),
+    chefId,
+    name,
+    description,
+    category,
+    nutritionalInfo,
+    allowsCustomization,
+    customizationOptions,
+    isActive: true,
+  };
+
+  db.createDish(dish);
+  return { 
+    success: true, 
+    data: dish, 
+    message: 'Dish added successfully' 
+  };
+};
+
+/**
+ * PUT /api/chef/dish/:id
+ * Update a dish
+ */
+export const updateDish = (
+  chefId: string,
+  dishId: string,
+  updates: Partial<Dish>
+): ApiResponse<Dish> => {
+  const dish = db.findDishById(dishId);
+  if (!dish || dish.chefId !== chefId) {
+    return { success: false, error: 'Dish not found or not owned by this chef' };
+  }
+
+  const updated = db.updateDish(dishId, updates);
+  return { 
+    success: true, 
+    data: updated!, 
+    message: 'Dish updated successfully' 
+  };
+};
+
+/**
+ * DELETE /api/chef/dish/:id
+ * Delete (deactivate) a dish
+ */
+export const deleteDish = (chefId: string, dishId: string): ApiResponse<boolean> => {
+  const dish = db.findDishById(dishId);
+  if (!dish || dish.chefId !== chefId) {
+    return { success: false, error: 'Dish not found or not owned by this chef' };
+  }
+
+  db.deleteDish(dishId);
+  return { 
+    success: true, 
+    data: true, 
+    message: 'Dish deleted successfully' 
+  };
+};
+
+/**
+ * GET /api/chef/dishes
+ * Get chef's dishes
+ */
+export const getChefDishes = (chefId: string): ApiResponse<Dish[]> => {
+  const dishes = db.getDishesByChefId(chefId);
+  return { success: true, data: dishes };
+};
+
+/**
  * GET /api/chef/orders
- * Get next-day orders (only for approved chefs)
+ * Get finalized next-day orders (only after 8 PM or for approved chefs)
  */
 export const getChefOrders = (chefId: string): ApiResponse<Order[]> => {
   const user = db.findUserById(chefId);
@@ -348,17 +684,56 @@ export const getChefOrders = (chefId: string): ApiResponse<Order[]> => {
     return { success: false, error: 'Chef not approved. Cannot view orders.' };
   }
 
+  // If before cutoff, orders are not finalized yet
+  const isBefore = db.isBeforeCutoff();
   const tomorrow = db.getTomorrowDate();
   const allOrders = db.getOrdersByDate(tomorrow);
   
+  // Filter orders for this chef only (or all orders if no chef assigned)
+  const chefOrders = allOrders.filter(order => 
+    order.chefId === chefId || !order.chefId
+  );
+  
   // Filter out skipped meals
   const dbData = db.readDatabase();
-  const activeOrders = allOrders.filter(order => {
+  const activeOrders = chefOrders.filter(order => {
     const dailyMeal = dbData.dailyMeals.find(dm => dm.id === order.dailyMealId);
     return dailyMeal && !dailyMeal.isSkipped;
   });
 
-  return { success: true, data: activeOrders };
+  // Add finalized flag info
+  const ordersWithInfo = activeOrders.map(order => ({
+    ...order,
+    isFinalized: !isBefore,
+  }));
+
+  return { success: true, data: ordersWithInfo as Order[] };
+};
+
+/**
+ * PUT /api/chef/order/:id/status
+ * Update order status (preparing, ready)
+ */
+export const updateOrderStatus = (
+  chefId: string,
+  orderId: string,
+  status: 'preparing' | 'ready'
+): ApiResponse<Order> => {
+  const order = db.readDatabase().orders.find(o => o.id === orderId);
+  if (!order) {
+    return { success: false, error: 'Order not found' };
+  }
+
+  if (order.chefId && order.chefId !== chefId) {
+    return { success: false, error: 'Not authorized to update this order' };
+  }
+
+  const updated = db.updateOrder(orderId, { status });
+  return { 
+    success: true, 
+    data: updated!, 
+    message: `Order marked as ${status}` 
+  };
 };
 
 // ========================================
@@ -489,7 +864,7 @@ export const rejectChef = (chefId: string): ApiResponse<Chef> => {
 };
 
 // ========================================
-// UTILITY ENDPOINTS
+// PUBLIC ENDPOINTS
 // ========================================
 
 /**
@@ -502,8 +877,65 @@ export const getAllMeals = (): ApiResponse => {
 };
 
 /**
+ * GET /api/dishes
+ * Get all available dishes
+ */
+export const getAllDishes = (): ApiResponse<Dish[]> => {
+  const dishes = db.getAllDishes();
+  return { success: true, data: dishes };
+};
+
+/**
+ * GET /api/chefs
+ * Get all approved chefs
+ */
+export const getApprovedChefs = (): ApiResponse<Chef[]> => {
+  const chefs = db.getApprovedChefs();
+  return { success: true, data: chefs };
+};
+
+/**
+ * GET /api/chef/:id/dishes
+ * Get dishes for a specific chef
+ */
+export const getDishesForChef = (chefId: string): ApiResponse<Dish[]> => {
+  const dishes = db.getDishesByChefId(chefId);
+  return { success: true, data: dishes };
+};
+
+/**
  * Utility: Check if meal modifications are allowed
  */
 export const canModifyMeal = (): boolean => {
   return db.isBeforeCutoff();
+};
+
+/**
+ * Utility: Generate nutritional info from dish name (simulated)
+ */
+export const generateNutritionalInfo = (dishName: string): NutritionalInfo => {
+  // Simulated nutritional info generation based on dish name keywords
+  const name = dishName.toLowerCase();
+  
+  let base = { calories: 450, protein: 20, carbs: 50, fat: 15 };
+  
+  if (name.includes('chicken') || name.includes('mutton') || name.includes('fish')) {
+    base = { calories: 550, protein: 35, carbs: 35, fat: 22 };
+  } else if (name.includes('paneer') || name.includes('cheese')) {
+    base = { calories: 520, protein: 22, carbs: 40, fat: 28 };
+  } else if (name.includes('keto') || name.includes('low carb')) {
+    base = { calories: 380, protein: 30, carbs: 12, fat: 25 };
+  } else if (name.includes('biryani') || name.includes('rice')) {
+    base = { calories: 620, protein: 18, carbs: 75, fat: 20 };
+  } else if (name.includes('salad') || name.includes('healthy')) {
+    base = { calories: 320, protein: 12, carbs: 30, fat: 15 };
+  }
+  
+  // Add some randomness
+  return {
+    calories: base.calories + Math.floor(Math.random() * 50) - 25,
+    protein: base.protein + Math.floor(Math.random() * 5) - 2,
+    carbs: base.carbs + Math.floor(Math.random() * 10) - 5,
+    fat: base.fat + Math.floor(Math.random() * 5) - 2,
+  };
 };
