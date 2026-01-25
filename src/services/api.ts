@@ -13,13 +13,16 @@ import type {
   Address, 
   DailyMeal, 
   Order,
+  OrderStatus,
+  OrderStatusHistory,
   PlanType,
   MealTime,
   AddressType,
   Dish,
   NutritionalInfo,
   CustomizationOption,
-  SelectedCustomization
+  SelectedCustomization,
+  Review
 } from '@/types';
 import * as db from './db';
 
@@ -187,7 +190,8 @@ export const subscribe = (
       dishId,
       customerName: user.name,
       deliveryAddress: address,
-      status: 'pending',
+      status: 'scheduled',
+      statusHistory: [{ status: 'scheduled', timestamp: new Date().toISOString() }],
       date: dateStr,
       mealTime,
     };
@@ -719,7 +723,8 @@ export const updateOrderStatus = (
   orderId: string,
   status: 'preparing' | 'ready'
 ): ApiResponse<Order> => {
-  const order = db.readDatabase().orders.find(o => o.id === orderId);
+  const dbData = db.readDatabase();
+  const order = dbData.orders.find(o => o.id === orderId);
   if (!order) {
     return { success: false, error: 'Order not found' };
   }
@@ -728,7 +733,21 @@ export const updateOrderStatus = (
     return { success: false, error: 'Not authorized to update this order' };
   }
 
-  const updated = db.updateOrder(orderId, { status });
+  const newHistoryEntry: OrderStatusHistory = {
+    status,
+    timestamp: new Date().toISOString(),
+    updatedBy: chefId,
+  };
+
+  const statusHistory = [...(order.statusHistory || []), newHistoryEntry];
+  const updated = db.updateOrder(orderId, { status, statusHistory });
+  
+  // Update daily meal status too
+  const dailyMeal = dbData.dailyMeals.find(dm => dm.id === order.dailyMealId);
+  if (dailyMeal) {
+    db.updateDailyMeal(dailyMeal.id, { status });
+  }
+  
   return { 
     success: true, 
     data: updated!, 
@@ -829,7 +848,14 @@ export const markPickedUp = (
     return { success: false, error: 'Order already delivered' };
   }
 
-  const updated = db.updateOrder(orderId, { status: 'picked_up' });
+  const newHistoryEntry: OrderStatusHistory = {
+    status: 'out_for_delivery',
+    timestamp: new Date().toISOString(),
+    updatedBy: deliveryPartnerId,
+  };
+
+  const statusHistory = [...(order.statusHistory || []), newHistoryEntry];
+  const updated = db.updateOrder(orderId, { status: 'out_for_delivery', statusHistory });
 
   const dailyMeal = dbData.dailyMeals.find(dm => dm.id === order.dailyMealId);
   if (dailyMeal) {
@@ -865,7 +891,15 @@ export const markDelivered = (
     return { success: false, error: 'Order already delivered' };
   }
 
-  const updated = db.updateOrder(orderId, { status: 'delivered' });
+  const deliveredAt = new Date().toISOString();
+  const newHistoryEntry: OrderStatusHistory = {
+    status: 'delivered',
+    timestamp: deliveredAt,
+    updatedBy: deliveryPartnerId,
+  };
+
+  const statusHistory = [...(order.statusHistory || []), newHistoryEntry];
+  const updated = db.updateOrder(orderId, { status: 'delivered', statusHistory, deliveredAt });
 
   const dailyMeal = dbData.dailyMeals.find(dm => dm.id === order.dailyMealId);
   if (dailyMeal) {
@@ -1200,4 +1234,205 @@ export const generateNutritionalInfo = (dishName: string): NutritionalInfo => {
     carbs: base.carbs + Math.floor(Math.random() * 10) - 5,
     fat: base.fat + Math.floor(Math.random() * 5) - 2,
   };
+};
+
+// ========================================
+// REVIEW ENDPOINTS (POST /api/reviews/*)
+// ========================================
+
+/**
+ * POST /api/reviews
+ * Submit a review for a delivered order
+ */
+export const submitReview = (
+  customerId: string,
+  orderId: string,
+  rating: number,
+  comment?: string
+): ApiResponse<Review> => {
+  // Validate rating
+  if (rating < 1 || rating > 5) {
+    return { success: false, error: 'Rating must be between 1 and 5' };
+  }
+
+  // Find the order
+  const dbData = db.readDatabase();
+  const order = dbData.orders.find(o => o.id === orderId);
+  if (!order) {
+    return { success: false, error: 'Order not found' };
+  }
+
+  // Verify order belongs to customer
+  if (order.customerId !== customerId) {
+    return { success: false, error: 'Not authorized to review this order' };
+  }
+
+  // Verify order is delivered
+  if (order.status !== 'delivered') {
+    return { success: false, error: 'Can only review delivered orders' };
+  }
+
+  // Check if already reviewed
+  const existingReview = db.getReviewByOrderId(orderId);
+  if (existingReview) {
+    return { success: false, error: 'Order already reviewed' };
+  }
+
+  const review: Review = {
+    id: db.generateId('rev'),
+    orderId,
+    customerId,
+    chefId: order.chefId || '',
+    mealId: order.mealId,
+    mealName: order.mealName,
+    rating,
+    comment,
+    createdAt: new Date().toISOString(),
+  };
+
+  db.createReview(review);
+
+  // Mark order as reviewed
+  db.updateOrder(orderId, { isReviewed: true });
+
+  // Update chef rating aggregates
+  if (order.chefId) {
+    const { averageRating, reviewCount } = db.getChefRating(order.chefId);
+    db.updateUser(order.chefId, { 
+      rating: averageRating, 
+      totalOrders: reviewCount 
+    } as Partial<Chef>);
+  }
+
+  return { 
+    success: true, 
+    data: review, 
+    message: 'Review submitted successfully' 
+  };
+};
+
+/**
+ * GET /api/reviews/customer/:id
+ * Get customer's reviews
+ */
+export const getCustomerReviews = (customerId: string): ApiResponse<Review[]> => {
+  const reviews = db.getReviewsByCustomerId(customerId);
+  return { success: true, data: reviews };
+};
+
+/**
+ * GET /api/reviews/chef/:id
+ * Get chef's reviews
+ */
+export const getChefReviews = (chefId: string): ApiResponse<Review[]> => {
+  const reviews = db.getReviewsByChefId(chefId);
+  return { success: true, data: reviews };
+};
+
+/**
+ * GET /api/reviews/chef/:id/rating
+ * Get chef's rating summary
+ */
+export const getChefRatingSummary = (chefId: string): ApiResponse<{ averageRating: number; reviewCount: number }> => {
+  const rating = db.getChefRating(chefId);
+  return { success: true, data: rating };
+};
+
+/**
+ * GET /api/orders/customer/:id/for-review
+ * Get delivered orders eligible for review
+ */
+export const getOrdersForReview = (customerId: string): ApiResponse<Order[]> => {
+  const orders = db.getDeliveredOrdersForReview(customerId);
+  return { success: true, data: orders };
+};
+
+/**
+ * GET /api/orders/customer/:id/tracking
+ * Get customer orders with tracking info
+ */
+export const getCustomerOrdersWithTracking = (customerId: string): ApiResponse<Order[]> => {
+  const orders = db.getCustomerOrders(customerId);
+  return { success: true, data: orders };
+};
+
+/**
+ * GET /api/admin/reviews
+ * Get all reviews for admin moderation
+ */
+export const getAllReviewsForAdmin = (): ApiResponse<Review[]> => {
+  const reviews = db.getAllReviews();
+  return { success: true, data: reviews };
+};
+
+/**
+ * PUT /api/admin/reviews/:id/moderate
+ * Hide or unhide a review (admin moderation)
+ */
+export const moderateReview = (
+  reviewId: string,
+  isHidden: boolean,
+  hiddenReason?: string
+): ApiResponse<Review> => {
+  const review = db.updateReview(reviewId, { isHidden, hiddenReason });
+  if (!review) {
+    return { success: false, error: 'Review not found' };
+  }
+  return { 
+    success: true, 
+    data: review, 
+    message: isHidden ? 'Review hidden' : 'Review restored' 
+  };
+};
+
+/**
+ * GET /api/admin/orders
+ * Get all orders for admin with filters
+ */
+export const getAdminOrders = (filters?: {
+  date?: string;
+  chefId?: string;
+  status?: string;
+}): ApiResponse<Order[]> => {
+  const dbData = db.readDatabase();
+  let orders = dbData.orders;
+
+  if (filters?.date) {
+    orders = orders.filter(o => o.date === filters.date);
+  }
+  if (filters?.chefId) {
+    orders = orders.filter(o => o.chefId === filters.chefId);
+  }
+  if (filters?.status) {
+    orders = orders.filter(o => o.status === filters.status);
+  }
+
+  // Add chef names
+  const ordersWithChefNames = orders.map(order => {
+    const chef = order.chefId ? dbData.users.find(u => u.id === order.chefId) as Chef : null;
+    return {
+      ...order,
+      chefName: chef?.name || 'Unassigned',
+    };
+  });
+
+  return { success: true, data: ordersWithChefNames };
+};
+
+/**
+ * Get approved chefs with rating info
+ */
+export const getApprovedChefsWithRatings = (): ApiResponse<(Chef & { averageRating: number; reviewCount: number })[]> => {
+  const chefs = db.getApprovedChefs();
+  const chefsWithRatings = chefs.map(chef => {
+    const { averageRating, reviewCount } = db.getChefRating(chef.id);
+    return {
+      ...chef,
+      averageRating,
+      reviewCount,
+    };
+  });
+  // Sort by rating (highest first)
+  chefsWithRatings.sort((a, b) => b.averageRating - a.averageRating);
+  return { success: true, data: chefsWithRatings };
 };

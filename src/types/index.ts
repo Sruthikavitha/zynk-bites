@@ -134,6 +134,15 @@ export interface DailyMeal {
   isFinalized: boolean;
 }
 
+// Order status history entry
+export interface OrderStatusHistory {
+  status: OrderStatus;
+  timestamp: string;
+  updatedBy?: string;
+}
+
+export type OrderStatus = 'pending' | 'scheduled' | 'preparing' | 'ready' | 'picked_up' | 'out_for_delivery' | 'delivered';
+
 export interface Order {
   id: string;
   dailyMealId: string;
@@ -145,12 +154,30 @@ export interface Order {
   customerName: string;
   deliveryAddress: Address;
   deliveryAddressType?: AddressType;
-  status: 'pending' | 'preparing' | 'ready' | 'picked_up' | 'out_for_delivery' | 'delivered';
+  status: OrderStatus;
+  statusHistory: OrderStatusHistory[];
   date: string;
   mealTime: MealTime;
   selectedCustomizations?: SelectedCustomization[];
   dishId?: string;
   zone?: string;
+  deliveredAt?: string;
+  isReviewed?: boolean;
+}
+
+// Review entity
+export interface Review {
+  id: string;
+  orderId: string;
+  customerId: string;
+  chefId: string;
+  mealId: string;
+  mealName: string;
+  rating: number; // 1-5
+  comment?: string;
+  createdAt: string;
+  isHidden?: boolean; // Admin moderation
+  hiddenReason?: string;
 }
 
 export interface ApiResponse<T = any> {
@@ -167,4 +194,5 @@ export interface Database {
   dishes: Dish[];
   dailyMeals: DailyMeal[];
   orders: Order[];
+  reviews: Review[];
 }
