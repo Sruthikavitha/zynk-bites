@@ -10,9 +10,12 @@ import { useToast } from '@/hooks/use-toast';
 import { 
   Calendar, MapPin, Clock, UtensilsCrossed, SkipForward, RefreshCw,
   AlertCircle, CheckCircle2, Lock, Home, Briefcase, ChefHat, Star,
-  Undo2, Settings
+  Undo2, Settings, Package
 } from 'lucide-react';
-import type { Subscription, DailyMeal, Address, Meal, PlanType, MealTime, Chef, Dish, Customer, AddressType } from '@/types';
+import { OrderTracker } from '@/components/order/OrderTracker';
+import { ReviewPrompt } from '@/components/review/ReviewPrompt';
+import { StarRating } from '@/components/review/ReviewForm';
+import type { Subscription, DailyMeal, Address, Meal, PlanType, MealTime, Chef, Dish, Customer, AddressType, Order } from '@/types';
 
 type CutoffStatus = 'OPEN' | 'LOCKED';
 
@@ -96,6 +99,8 @@ export const CustomerDashboard = () => {
   const [showSubscribe, setShowSubscribe] = useState(false);
   const [showChefSelect, setShowChefSelect] = useState(false);
   const [canModify, setCanModify] = useState(api.canModifyMeal());
+  const [ordersForReview, setOrdersForReview] = useState<Order[]>([]);
+  const [customerOrders, setCustomerOrders] = useState<Order[]>([]);
 
   const [plan, setPlan] = useState<PlanType>('standard');
   const [mealTime, setMealTime] = useState<MealTime>('lunch');
@@ -130,6 +135,12 @@ export const CustomerDashboard = () => {
 
     const chefResponse = api.getSelectedChef(user.id);
     if (chefResponse.success) setSelectedChef(chefResponse.data || null);
+
+    const reviewOrdersResponse = api.getOrdersForReview(user.id);
+    if (reviewOrdersResponse.success) setOrdersForReview(reviewOrdersResponse.data || []);
+
+    const trackingResponse = api.getCustomerOrdersWithTracking(user.id);
+    if (trackingResponse.success) setCustomerOrders(trackingResponse.data || []);
 
     setCanModify(api.canModifyMeal());
   };
@@ -203,6 +214,17 @@ export const CustomerDashboard = () => {
     }
   };
 
+  const handleSubmitReview = (orderId: string, rating: number, comment?: string) => {
+    if (!user) return;
+    const response = api.submitReview(user.id, orderId, rating, comment);
+    if (response.success) {
+      toast({ title: 'Review Submitted!', description: 'Thank you for your feedback.' });
+      loadData();
+    } else {
+      toast({ title: 'Error', description: response.error, variant: 'destructive' });
+    }
+  };
+
   const getMealName = (mealId: string) => {
     const dish = allDishes.find(d => d.id === mealId);
     if (dish) return dish.name;
@@ -249,8 +271,8 @@ export const CustomerDashboard = () => {
                         <h3 className="font-display font-bold">{chef.name}</h3>
                         <p className="text-sm text-muted-foreground">{chef.specialty}</p>
                         <div className="flex items-center gap-2 mt-1">
-                          <Star className="w-4 h-4 text-warning fill-warning" />
-                          <span className="text-sm font-medium">{chef.rating || 4.5}</span>
+                          <StarRating rating={chef.rating || 0} />
+                          <span className="text-sm font-medium">{chef.rating || 0}</span>
                           <span className="text-xs text-muted-foreground">• {chef.serviceArea}</span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-2">{dishes.length} dishes • Customization: {dishes.some(d => d.allowsCustomization) ? 'Yes' : 'No'}</p>
@@ -364,6 +386,31 @@ export const CustomerDashboard = () => {
 
         <CutoffBanner />
 
+        {/* Review Prompt */}
+        <ReviewPrompt orders={ordersForReview} onSubmitReview={handleSubmitReview} />
+
+        {/* Order Tracking */}
+        {customerOrders.length > 0 && customerOrders.some(o => o.status !== 'scheduled') && (
+          <Card className="mb-6 shadow-card border-primary/20">
+            <CardHeader>
+              <CardTitle className="font-display flex items-center gap-2">
+                <Package className="w-5 h-5 text-primary" />
+                Order Tracking
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {customerOrders.filter(o => o.status !== 'scheduled').slice(0, 1).map(order => (
+                <div key={order.id}>
+                  <p className="text-sm mb-3">
+                    <span className="font-medium">{order.mealName}</span>
+                    <span className="text-muted-foreground"> • {order.date}</span>
+                  </p>
+                  <OrderTracker order={order} showTimestamps />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
         {/* Subscription & Chef Info */}
         <div className="grid md:grid-cols-2 gap-4 mb-6">
           <Card className="shadow-card">

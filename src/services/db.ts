@@ -14,7 +14,8 @@ import type {
   Dish,
   DailyMeal, 
   Order,
-  Address
+  Address,
+  Review
 } from '@/types';
 
 const DB_KEY = 'zynk_database';
@@ -210,6 +211,7 @@ const initialDatabase: Database = {
   dishes: sampleDishes,
   dailyMeals: [],
   orders: [],
+  reviews: [],
 };
 
 // Read database from localStorage
@@ -464,4 +466,82 @@ export const getFinalizedOrdersForChef = (chefId: string): Order[] => {
 // Reset database (for testing)
 export const resetDatabase = (): void => {
   writeDatabase(initialDatabase);
+};
+
+// ========================================
+// REVIEW HELPERS
+// ========================================
+
+export const createReview = (review: Review): Review => {
+  const db = readDatabase();
+  if (!db.reviews) db.reviews = [];
+  db.reviews.push(review);
+  writeDatabase(db);
+  return review;
+};
+
+export const getReviewsByChefId = (chefId: string): Review[] => {
+  const db = readDatabase();
+  return (db.reviews || []).filter(r => r.chefId === chefId && !r.isHidden);
+};
+
+export const getReviewsByCustomerId = (customerId: string): Review[] => {
+  const db = readDatabase();
+  return (db.reviews || []).filter(r => r.customerId === customerId);
+};
+
+export const getReviewByOrderId = (orderId: string): Review | undefined => {
+  const db = readDatabase();
+  return (db.reviews || []).find(r => r.orderId === orderId);
+};
+
+export const getAllReviews = (): Review[] => {
+  const db = readDatabase();
+  return db.reviews || [];
+};
+
+export const updateReview = (reviewId: string, updates: Partial<Review>): Review | undefined => {
+  const db = readDatabase();
+  if (!db.reviews) return undefined;
+  const index = db.reviews.findIndex(r => r.id === reviewId);
+  if (index === -1) return undefined;
+  db.reviews[index] = { ...db.reviews[index], ...updates };
+  writeDatabase(db);
+  return db.reviews[index];
+};
+
+// Calculate chef's average rating
+export const getChefRating = (chefId: string): { averageRating: number; reviewCount: number } => {
+  const reviews = getReviewsByChefId(chefId);
+  if (reviews.length === 0) {
+    return { averageRating: 0, reviewCount: 0 };
+  }
+  const total = reviews.reduce((sum, r) => sum + r.rating, 0);
+  return {
+    averageRating: Math.round((total / reviews.length) * 10) / 10,
+    reviewCount: reviews.length,
+  };
+};
+
+// Get orders eligible for review (delivered, not yet reviewed)
+export const getDeliveredOrdersForReview = (customerId: string): Order[] => {
+  const db = readDatabase();
+  const today = new Date().toISOString().split('T')[0];
+  return db.orders.filter(o => 
+    o.customerId === customerId && 
+    o.status === 'delivered' &&
+    !o.isReviewed &&
+    o.date <= today
+  );
+};
+
+// Get customer orders with tracking info
+export const getCustomerOrders = (customerId: string): Order[] => {
+  const db = readDatabase();
+  const today = new Date().toISOString().split('T')[0];
+  const tomorrow = getTomorrowDate();
+  return db.orders.filter(o => 
+    o.customerId === customerId && 
+    (o.date === today || o.date === tomorrow)
+  );
 };
