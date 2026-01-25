@@ -55,6 +55,7 @@ export interface Dish {
   customizationOptions: CustomizationOption[];
   imageUrl?: string;
   isActive: boolean;
+  isSpecial?: boolean;
 }
 
 export interface Chef extends User {

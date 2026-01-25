@@ -1420,19 +1420,191 @@ export const getAdminOrders = (filters?: {
 };
 
 /**
- * Get approved chefs with rating info
+ * Get approved chefs with rating info and dishes
  */
-export const getApprovedChefsWithRatings = (): ApiResponse<(Chef & { averageRating: number; reviewCount: number })[]> => {
-  const chefs = db.getApprovedChefs();
-  const chefsWithRatings = chefs.map(chef => {
+export const getApprovedChefsWithRatings = (): ApiResponse<(Chef & { dishes: Dish[]; avgRating: number; reviewCount: number })[]> => {
+  const chefs = db.getApprovedChefs().filter(c => !c.isDisabled);
+  const chefsWithData = chefs.map(chef => {
     const { averageRating, reviewCount } = db.getChefRating(chef.id);
+    const dishes = db.getDishesByChefId(chef.id);
     return {
       ...chef,
-      averageRating,
+      dishes,
+      avgRating: averageRating,
       reviewCount,
     };
   });
   // Sort by rating (highest first)
-  chefsWithRatings.sort((a, b) => b.averageRating - a.averageRating);
-  return { success: true, data: chefsWithRatings };
+  chefsWithData.sort((a, b) => b.avgRating - a.avgRating);
+  return { success: true, data: chefsWithData };
+};
+
+/**
+ * GET /api/chef/:id/profile
+ * Get chef profile with dishes and reviews
+ */
+export const getChefProfile = (chefId: string): ApiResponse<{
+  chef: Chef;
+  dishes: Dish[];
+  reviews: Review[];
+  avgRating: number;
+}> => {
+  const chef = db.findUserById(chefId) as Chef;
+  if (!chef || chef.role !== 'chef') {
+    return { success: false, error: 'Chef not found' };
+  }
+
+  if (chef.status !== 'approved') {
+    return { success: false, error: 'Chef not approved' };
+  }
+
+  const dishes = db.getDishesByChefId(chefId);
+  const reviews = db.getReviewsByChefId(chefId);
+  const { averageRating } = db.getChefRating(chefId);
+
+  return {
+    success: true,
+    data: {
+      chef,
+      dishes,
+      reviews,
+      avgRating: averageRating,
+    },
+  };
+};
+
+/**
+ * POST /api/customer/subscribe-with-chef
+ * Create subscription with chef-first flow
+ */
+export const subscribeWithChef = (
+  customerId: string,
+  chefId: string,
+  selectedDishIds: string[],
+  plan: PlanType,
+  mealTime: MealTime,
+  homeAddress: Address,
+  workAddress?: Address
+): ApiResponse<Subscription> => {
+  const user = db.findUserById(customerId) as Customer;
+  if (!user || user.role !== 'customer') {
+    return { success: false, error: 'Customer not found' };
+  }
+
+  const chef = db.findUserById(chefId) as Chef;
+  if (!chef || chef.role !== 'chef' || chef.status !== 'approved') {
+    return { success: false, error: 'Chef not found or not approved' };
+  }
+
+  // Check for existing active subscription
+  const existingSub = db.findSubscriptionByCustomerId(customerId);
+  if (existingSub) {
+    return { success: false, error: 'Already have an active subscription' };
+  }
+
+  // Update customer addresses
+  db.updateUser(customerId, {
+    homeAddress,
+    workAddress: workAddress?.street ? workAddress : undefined,
+    selectedChefId: chefId,
+  } as Partial<Customer>);
+
+  const subscription: Subscription = {
+    id: db.generateId('sub'),
+    customerId,
+    plan,
+    mealTime,
+    address: homeAddress,
+    activeAddressType: 'home',
+    selectedChefId: chefId,
+    startDate: db.getTomorrowDate(),
+    status: 'active',
+  };
+
+  db.createSubscription(subscription);
+
+  // Get chef's selected dishes or all dishes
+  const chefDishes = selectedDishIds.length > 0 
+    ? selectedDishIds.map(id => db.findDishById(id)).filter(Boolean) as Dish[]
+    : db.getDishesByChefId(chefId);
+
+  if (chefDishes.length === 0) {
+    return { success: false, error: 'No dishes available from this chef' };
+  }
+
+  // Create daily meals for next 7 days
+  for (let i = 1; i <= 7; i++) {
+    const date = new Date();
+    date.setDate(date.getDate() + i);
+    const dateStr = date.toISOString().split('T')[0];
+    
+    // Rotate through selected dishes
+    const dish = chefDishes[(i - 1) % chefDishes.length];
+    
+    const dailyMeal: DailyMeal = {
+      id: db.generateId('dm'),
+      date: dateStr,
+      mealTime,
+      subscriptionId: subscription.id,
+      customerId,
+      originalMealId: dish.id,
+      currentMealId: dish.id,
+      originalDishId: dish.id,
+      currentDishId: dish.id,
+      isSkipped: false,
+      isSwapped: false,
+      status: 'scheduled',
+      deliveryAddressType: 'home',
+      isFinalized: false,
+    };
+    db.createDailyMeal(dailyMeal);
+
+    // Create order with nutrition snapshot
+    const order: Order = {
+      id: db.generateId('ord'),
+      dailyMealId: dailyMeal.id,
+      customerId,
+      chefId,
+      chefName: chef.name,
+      mealId: dish.id,
+      mealName: dish.name,
+      dishId: dish.id,
+      customerName: user.name,
+      deliveryAddress: homeAddress,
+      deliveryAddressType: 'home',
+      status: 'scheduled',
+      statusHistory: [{ status: 'scheduled', timestamp: new Date().toISOString() }],
+      date: dateStr,
+      mealTime,
+    };
+    db.createOrder(order);
+  }
+
+  return { 
+    success: true, 
+    data: subscription, 
+    message: 'Subscription created successfully' 
+  };
+};
+
+/**
+ * PUT /api/chef/dish/:id/special
+ * Mark/unmark a dish as special
+ */
+export const toggleDishSpecial = (
+  chefId: string,
+  dishId: string,
+  isSpecial: boolean
+): ApiResponse<Dish> => {
+  const dish = db.findDishById(dishId);
+  if (!dish || dish.chefId !== chefId) {
+    return { success: false, error: 'Dish not found or not owned by this chef' };
+  }
+
+  const updated = db.updateDish(dishId, { isSpecial } as any);
+  return { 
+    success: true, 
+    data: updated!, 
+    message: isSpecial ? 'Dish marked as special' : 'Dish unmarked as special' 
+  };
 };
