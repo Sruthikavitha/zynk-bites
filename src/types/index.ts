@@ -59,7 +59,7 @@ export interface Dish {
 
 export interface Chef extends User {
   role: 'chef';
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'disabled';
   specialty?: string;
   bio?: string;
   kitchenLocation?: Address;
@@ -67,6 +67,7 @@ export interface Chef extends User {
   deliverySlots?: string[];
   rating?: number;
   totalOrders?: number;
+  isDisabled?: boolean;
 }
 
 export interface DeliveryPartner extends User {
@@ -86,6 +87,7 @@ export type AddressType = 'home' | 'work';
 export interface Subscription {
   id: string;
   customerId: string;
+  customerName?: string;
   plan: PlanType;
   mealTime: MealTime;
   startDate: string;
@@ -137,15 +139,18 @@ export interface Order {
   dailyMealId: string;
   customerId: string;
   chefId?: string;
+  chefName?: string;
   mealId: string;
   mealName: string;
   customerName: string;
   deliveryAddress: Address;
-  status: 'pending' | 'preparing' | 'ready' | 'out_for_delivery' | 'delivered';
+  deliveryAddressType?: AddressType;
+  status: 'pending' | 'preparing' | 'ready' | 'picked_up' | 'out_for_delivery' | 'delivered';
   date: string;
   mealTime: MealTime;
   selectedCustomizations?: SelectedCustomization[];
   dishId?: string;
+  zone?: string;
 }
 
 export interface ApiResponse<T = any> {

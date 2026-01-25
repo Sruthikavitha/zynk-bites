@@ -740,28 +740,112 @@ export const updateOrderStatus = (
 // DELIVERY ENDPOINTS (GET/POST /api/delivery/*)
 // ========================================
 
-/**
- * GET /api/delivery/tomorrow
- * Get list of tomorrow's deliveries
- */
+export interface DeliveryOrder extends Order {
+  chefName?: string;
+  zone?: string;
+}
+
+export interface GroupedDeliveries {
+  byZone: Record<string, DeliveryOrder[]>;
+  byChef: Record<string, DeliveryOrder[]>;
+}
+
+const getZoneFromAddress = (address: Address): string => {
+  const city = address.city?.toLowerCase() || '';
+  const zipCode = address.zipCode || '';
+  
+  if (city.includes('koramangala') || zipCode.startsWith('5600')) return 'South Bangalore';
+  if (city.includes('whitefield') || zipCode.startsWith('5600')) return 'East Bangalore';
+  if (city.includes('jp nagar') || city.includes('jayanagar')) return 'South Bangalore';
+  if (city.includes('indiranagar') || city.includes('domlur')) return 'Central Bangalore';
+  return address.city || 'Unknown Zone';
+};
+
 export const getTomorrowDeliveries = (): ApiResponse<Order[]> => {
   const tomorrow = db.getTomorrowDate();
   const allOrders = db.getOrdersByDate(tomorrow);
   
-  // Filter out skipped meals
   const dbData = db.readDatabase();
   const activeOrders = allOrders.filter(order => {
     const dailyMeal = dbData.dailyMeals.find(dm => dm.id === order.dailyMealId);
     return dailyMeal && !dailyMeal.isSkipped;
   });
 
-  return { success: true, data: activeOrders };
+  const ordersWithDetails = activeOrders.map(order => {
+    const chef = order.chefId ? dbData.users.find(u => u.id === order.chefId) as Chef : null;
+    const dailyMeal = dbData.dailyMeals.find(dm => dm.id === order.dailyMealId);
+    return {
+      ...order,
+      chefName: chef?.name || 'Unassigned',
+      zone: getZoneFromAddress(order.deliveryAddress),
+      deliveryAddressType: dailyMeal?.deliveryAddressType || 'home',
+    };
+  });
+
+  return { success: true, data: ordersWithDetails };
 };
 
-/**
- * POST /api/delivery/mark-delivered
- * Mark an order as delivered
- */
+export const getGroupedDeliveries = (): ApiResponse<GroupedDeliveries> => {
+  const response = getTomorrowDeliveries();
+  if (!response.success || !response.data) {
+    return { success: false, error: 'Failed to fetch deliveries' };
+  }
+
+  const orders = response.data as DeliveryOrder[];
+  
+  const byZone: Record<string, DeliveryOrder[]> = {};
+  const byChef: Record<string, DeliveryOrder[]> = {};
+
+  orders.forEach(order => {
+    const zone = order.zone || 'Unknown';
+    const chefName = order.chefName || 'Unassigned';
+
+    if (!byZone[zone]) byZone[zone] = [];
+    byZone[zone].push(order);
+
+    if (!byChef[chefName]) byChef[chefName] = [];
+    byChef[chefName].push(order);
+  });
+
+  return { success: true, data: { byZone, byChef } };
+};
+
+export const markPickedUp = (
+  deliveryPartnerId: string, 
+  orderId: string
+): ApiResponse<Order> => {
+  const user = db.findUserById(deliveryPartnerId);
+  if (!user || user.role !== 'delivery') {
+    return { success: false, error: 'Delivery partner not found' };
+  }
+
+  const dbData = db.readDatabase();
+  const order = dbData.orders.find(o => o.id === orderId);
+  if (!order) {
+    return { success: false, error: 'Order not found' };
+  }
+
+  if (order.status === 'delivered') {
+    return { success: false, error: 'Order already delivered' };
+  }
+
+  const updated = db.updateOrder(orderId, { status: 'picked_up' });
+
+  const dailyMeal = dbData.dailyMeals.find(dm => dm.id === order.dailyMealId);
+  if (dailyMeal) {
+    db.updateDailyMeal(dailyMeal.id, { 
+      status: 'out_for_delivery',
+      deliveryPartnerId 
+    });
+  }
+
+  return { 
+    success: true, 
+    data: updated!, 
+    message: 'Order picked up' 
+  };
+};
+
 export const markDelivered = (
   deliveryPartnerId: string, 
   orderId: string
@@ -777,9 +861,12 @@ export const markDelivered = (
     return { success: false, error: 'Order not found' };
   }
 
+  if (order.status === 'delivered') {
+    return { success: false, error: 'Order already delivered' };
+  }
+
   const updated = db.updateOrder(orderId, { status: 'delivered' });
 
-  // Update daily meal status
   const dailyMeal = dbData.dailyMeals.find(dm => dm.id === order.dailyMealId);
   if (dailyMeal) {
     db.updateDailyMeal(dailyMeal.id, { 
@@ -861,6 +948,181 @@ export const rejectChef = (chefId: string): ApiResponse<Chef> => {
     data: updated as Chef, 
     message: 'Chef rejected' 
   };
+};
+
+export interface TomorrowOperationsSummary {
+  chefBreakdown: Array<{
+    chefId: string;
+    chefName: string;
+    totalMeals: number;
+    customizationCount: number;
+  }>;
+  zoneBreakdown: Array<{
+    zone: string;
+    totalDeliveries: number;
+  }>;
+  totalMeals: number;
+}
+
+export const getTomorrowOperationsSummary = (): ApiResponse<TomorrowOperationsSummary> => {
+  const tomorrow = db.getTomorrowDate();
+  const dbData = db.readDatabase();
+  const allOrders = db.getOrdersByDate(tomorrow);
+  
+  const activeOrders = allOrders.filter(order => {
+    const dailyMeal = dbData.dailyMeals.find(dm => dm.id === order.dailyMealId);
+    return dailyMeal && !dailyMeal.isSkipped;
+  });
+
+  const chefStats: Record<string, { chefName: string; totalMeals: number; customizationCount: number }> = {};
+  const zoneStats: Record<string, number> = {};
+
+  activeOrders.forEach(order => {
+    const chefId = order.chefId || 'unassigned';
+    const chef = order.chefId ? dbData.users.find(u => u.id === order.chefId) : null;
+    const chefName = chef?.name || 'Unassigned';
+
+    if (!chefStats[chefId]) {
+      chefStats[chefId] = { chefName, totalMeals: 0, customizationCount: 0 };
+    }
+    chefStats[chefId].totalMeals++;
+    if (order.selectedCustomizations && order.selectedCustomizations.length > 0) {
+      chefStats[chefId].customizationCount++;
+    }
+
+    const zone = order.deliveryAddress?.city || 'Unknown';
+    zoneStats[zone] = (zoneStats[zone] || 0) + 1;
+  });
+
+  return {
+    success: true,
+    data: {
+      chefBreakdown: Object.entries(chefStats).map(([chefId, stats]) => ({
+        chefId,
+        ...stats,
+      })),
+      zoneBreakdown: Object.entries(zoneStats).map(([zone, totalDeliveries]) => ({
+        zone,
+        totalDeliveries,
+      })),
+      totalMeals: activeOrders.length,
+    },
+  };
+};
+
+export interface EnhancedAdminStats {
+  totalCustomers: number;
+  totalChefs: number;
+  approvedChefs: number;
+  activeSubscriptions: number;
+  pendingChefs: number;
+  totalOrders: number;
+  tomorrowMeals: number;
+  pausedSubscriptions: number;
+  disabledChefs: number;
+}
+
+export const getEnhancedAdminOverview = (): ApiResponse<EnhancedAdminStats> => {
+  const dbData = db.readDatabase();
+  const tomorrow = db.getTomorrowDate();
+  const tomorrowOrders = db.getOrdersByDate(tomorrow);
+  const activeTomorrowOrders = tomorrowOrders.filter(order => {
+    const dailyMeal = dbData.dailyMeals.find(dm => dm.id === order.dailyMealId);
+    return dailyMeal && !dailyMeal.isSkipped;
+  });
+
+  return {
+    success: true,
+    data: {
+      totalCustomers: dbData.users.filter(u => u.role === 'customer').length,
+      totalChefs: dbData.users.filter(u => u.role === 'chef').length,
+      approvedChefs: dbData.users.filter(u => u.role === 'chef' && (u as Chef).status === 'approved').length,
+      activeSubscriptions: dbData.subscriptions.filter(s => s.status === 'active').length,
+      pendingChefs: dbData.users.filter(u => u.role === 'chef' && (u as Chef).status === 'pending').length,
+      totalOrders: dbData.orders.length,
+      tomorrowMeals: activeTomorrowOrders.length,
+      pausedSubscriptions: dbData.subscriptions.filter(s => s.status === 'paused').length,
+      disabledChefs: dbData.users.filter(u => u.role === 'chef' && (u as Chef).isDisabled).length,
+    },
+  };
+};
+
+export const pauseSubscription = (subscriptionId: string): ApiResponse<Subscription> => {
+  const dbData = db.readDatabase();
+  const subscription = dbData.subscriptions.find(s => s.id === subscriptionId);
+  
+  if (!subscription) {
+    return { success: false, error: 'Subscription not found' };
+  }
+
+  const updated = db.updateSubscription(subscriptionId, { status: 'paused' });
+  return {
+    success: true,
+    data: updated!,
+    message: 'Subscription paused',
+  };
+};
+
+export const resumeSubscription = (subscriptionId: string): ApiResponse<Subscription> => {
+  const dbData = db.readDatabase();
+  const subscription = dbData.subscriptions.find(s => s.id === subscriptionId);
+  
+  if (!subscription) {
+    return { success: false, error: 'Subscription not found' };
+  }
+
+  const updated = db.updateSubscription(subscriptionId, { status: 'active' });
+  return {
+    success: true,
+    data: updated!,
+    message: 'Subscription resumed',
+  };
+};
+
+export const disableChef = (chefId: string): ApiResponse<Chef> => {
+  const user = db.findUserById(chefId);
+  if (!user || user.role !== 'chef') {
+    return { success: false, error: 'Chef not found' };
+  }
+
+  const updated = db.updateUser(chefId, { isDisabled: true } as Partial<Chef>);
+  return {
+    success: true,
+    data: updated as Chef,
+    message: 'Chef disabled',
+  };
+};
+
+export const enableChef = (chefId: string): ApiResponse<Chef> => {
+  const user = db.findUserById(chefId);
+  if (!user || user.role !== 'chef') {
+    return { success: false, error: 'Chef not found' };
+  }
+
+  const updated = db.updateUser(chefId, { isDisabled: false } as Partial<Chef>);
+  return {
+    success: true,
+    data: updated as Chef,
+    message: 'Chef enabled',
+  };
+};
+
+export const getAllSubscriptions = (): ApiResponse<Subscription[]> => {
+  const dbData = db.readDatabase();
+  const subscriptionsWithNames = dbData.subscriptions.map(sub => {
+    const customer = dbData.users.find(u => u.id === sub.customerId);
+    return {
+      ...sub,
+      customerName: customer?.name || 'Unknown',
+    };
+  });
+  return { success: true, data: subscriptionsWithNames };
+};
+
+export const getAllChefs = (): ApiResponse<Chef[]> => {
+  const dbData = db.readDatabase();
+  const chefs = dbData.users.filter(u => u.role === 'chef') as Chef[];
+  return { success: true, data: chefs };
 };
 
 // ========================================
