@@ -22,8 +22,8 @@ export const ReviewCard = ({ review, showModerationControls = false, onModerate 
   return (
     <div
       className={cn(
-        'p-4 rounded-xl border',
-        review.isHidden ? 'bg-muted/50 border-destructive/30' : 'bg-card border-border'
+        'p-4 rounded-2xl border',
+        review.isHidden ? 'bg-muted/50 border-destructive/30' : 'bg-secondary/50 border-border/40'
       )}
     >
       <div className="flex items-start justify-between gap-3">
