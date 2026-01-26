@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import * as api from '@/services/api';
@@ -116,17 +116,18 @@ export const Register = () => {
     }
   };
 
-  const AddressForm = ({ 
-    address, 
-    setAddress, 
-    title, 
-    icon: Icon 
-  }: { 
-    address: Address; 
-    setAddress: (a: Address) => void; 
-    title: string; 
-    icon: typeof Home;
-  }) => (
+// Extracted AddressForm to stable component to avoid re-creating on every render
+// and use functional updates for setters to preserve caret/focus during typing.
+
+type AddressFormProps = {
+  address: Address;
+  setAddress: React.Dispatch<React.SetStateAction<Address>>;
+  title: string;
+  icon: typeof Home;
+};
+
+const AddressForm = React.memo(function AddressForm({ address, setAddress, title, icon: Icon }: AddressFormProps) {
+  return (
     <div className="space-y-3 p-4 rounded-xl bg-secondary/50">
       <div className="flex items-center gap-2 text-sm font-medium">
         <Icon className="w-4 h-4 text-primary" />
@@ -135,27 +136,28 @@ export const Register = () => {
       <Input
         placeholder="Street address"
         value={address.street}
-        onChange={(e) => setAddress({ ...address, street: e.target.value })}
+        onChange={(e) => setAddress(prev => ({ ...prev, street: e.target.value }))}
       />
       <div className="grid grid-cols-2 gap-2">
         <Input
           placeholder="City"
           value={address.city}
-          onChange={(e) => setAddress({ ...address, city: e.target.value })}
+          onChange={(e) => setAddress(prev => ({ ...prev, city: e.target.value }))}
         />
         <Input
           placeholder="State"
           value={address.state}
-          onChange={(e) => setAddress({ ...address, state: e.target.value })}
+          onChange={(e) => setAddress(prev => ({ ...prev, state: e.target.value }))}
         />
       </div>
       <Input
         placeholder="ZIP Code"
         value={address.zipCode}
-        onChange={(e) => setAddress({ ...address, zipCode: e.target.value })}
+        onChange={(e) => setAddress(prev => ({ ...prev, zipCode: e.target.value }))}
       />
     </div>
   );
+});
 
   return (
     <Layout>
