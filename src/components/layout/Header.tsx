@@ -18,7 +18,7 @@ const roleIcons = {
 };
 
 const roleColors = {
-  customer: 'bg-primary',
+  customer: 'bg-health',
   chef: 'bg-chef',
   delivery: 'bg-delivery',
   admin: 'bg-admin',
@@ -31,32 +31,32 @@ export const Header = () => {
   const RoleIcon = user ? roleIcons[user.role] : User;
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+    <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/90">
       <div className="container flex h-16 items-center justify-between px-4">
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-card group-hover:shadow-card-hover transition-shadow">
+        <Link to="/" className="flex items-center gap-2.5 group">
+          <div className="w-10 h-10 rounded-2xl gradient-herbal flex items-center justify-center transition-transform group-hover:scale-105">
             <UtensilsCrossed className="w-5 h-5 text-primary-foreground" />
           </div>
-          <span className="font-display font-bold text-xl text-foreground">ZYNK</span>
+          <span className="font-display font-bold text-xl text-foreground tracking-tight">ZYNK</span>
         </Link>
 
-        <nav className="flex items-center gap-4">
+        <nav className="flex items-center gap-3">
           {isAuthenticated && user ? (
             <>
-              <div className="flex items-center gap-3 px-3 py-1.5 rounded-full bg-secondary">
+              <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-secondary/80 border border-border/50">
                 <div className={`w-7 h-7 rounded-full ${roleColors[user.role]} flex items-center justify-center`}>
-                  <RoleIcon className="w-4 h-4 text-white" />
+                  <RoleIcon className="w-3.5 h-3.5 text-white" />
                 </div>
                 <div className="hidden sm:block">
                   <p className="text-sm font-medium text-foreground">{user.name}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{user.role === 'customer' ? 'Member' : user.role}</p>
                 </div>
               </div>
               <Button 
                 variant="ghost" 
-                size="sm" 
+                size="icon" 
                 onClick={logout}
-                className="text-muted-foreground hover:text-destructive"
+                className="text-muted-foreground hover:text-destructive rounded-full"
               >
                 <LogOut className="w-4 h-4" />
               </Button>
@@ -70,7 +70,7 @@ export const Header = () => {
               )}
               {location.pathname !== '/register' && (
                 <Button asChild size="sm">
-                  <Link to="/register">Get Started</Link>
+                  <Link to="/register">Start Fresh</Link>
                 </Button>
               )}
             </div>

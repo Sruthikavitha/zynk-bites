@@ -12,9 +12,9 @@ export const Layout = ({ children }: LayoutProps) => {
       <main className="flex-1">
         {children}
       </main>
-      <footer className="border-t border-border bg-card py-6">
+      <footer className="border-t border-border/50 bg-secondary/30 py-6">
         <div className="container px-4 text-center text-sm text-muted-foreground">
-          <p>© 2024 ZYNK. Made for college students and working professionals.</p>
+          <p>© 2024 ZYNK · Your Personal Health Kitchen</p>
         </div>
       </footer>
     </div>

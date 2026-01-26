@@ -15,7 +15,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
-        display: ['Plus Jakarta Sans', 'sans-serif'],
+        display: ['Manrope', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -71,11 +71,16 @@ export default {
           DEFAULT: "hsl(var(--admin))",
           foreground: "hsl(var(--admin-foreground))",
         },
+        health: {
+          DEFAULT: "hsl(var(--health))",
+          foreground: "hsl(var(--health-foreground))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        pill: "9999px",
       },
       keyframes: {
         "accordion-down": {
@@ -96,9 +101,10 @@ export default {
         shimmer: "shimmer 1.5s infinite",
       },
       boxShadow: {
-        'card': '0 2px 8px -2px rgba(0, 0, 0, 0.08), 0 4px 16px -4px rgba(0, 0, 0, 0.12)',
-        'card-hover': '0 4px 12px -2px rgba(0, 0, 0, 0.1), 0 8px 24px -4px rgba(0, 0, 0, 0.15)',
-        'elevated': '0 8px 24px -4px rgba(0, 0, 0, 0.12), 0 16px 48px -8px rgba(0, 0, 0, 0.15)',
+        'card': '0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.03)',
+        'card-hover': '0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04)',
+        'elevated': '0 4px 12px -2px rgba(0, 0, 0, 0.06), 0 2px 6px -2px rgba(0, 0, 0, 0.04)',
+        'soft': '0 2px 8px -2px rgba(60, 100, 60, 0.08)',
       },
     },
   },

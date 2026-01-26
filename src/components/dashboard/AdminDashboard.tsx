@@ -72,22 +72,22 @@ const CutoffBanner = () => {
 
   if (!isLocked) {
     return (
-      <div className="mb-6 p-4 rounded-xl bg-warning/10 border border-warning/30 flex items-center gap-3">
-        <AlertCircle className="w-5 h-5 text-warning" />
+      <div className="mb-6 p-4 rounded-2xl bg-muted/80 border border-border/50 flex items-center gap-3">
+        <AlertCircle className="w-5 h-5 text-muted-foreground" />
         <div>
-          <p className="font-medium text-warning">Pre-Cutoff Mode</p>
-          <p className="text-sm text-muted-foreground">Customers can still modify tomorrow's meals until 8 PM.</p>
+          <p className="font-medium text-foreground">Before evening cutoff</p>
+          <p className="text-sm text-muted-foreground">Members can still modify tomorrow's meals until 8 PM.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="mb-6 p-4 rounded-xl bg-accent/10 border border-accent/30 flex items-center gap-3">
-      <Lock className="w-5 h-5 text-accent" />
+    <div className="mb-6 p-4 rounded-2xl bg-primary/5 border border-primary/20 flex items-center gap-3">
+      <Lock className="w-5 h-5 text-primary" />
       <div>
-        <p className="font-medium text-accent">Post-Cutoff: Orders Finalized</p>
-        <p className="text-sm text-muted-foreground">Tomorrow's orders are locked and sent to chefs and delivery.</p>
+        <p className="font-medium text-primary">Kitchen orders locked</p>
+        <p className="text-sm text-muted-foreground">Tomorrow's meals are confirmed and sent to chefs.</p>
       </div>
     </div>
   );
@@ -233,11 +233,11 @@ export const AdminDashboard = () => {
     <div className="container py-8 px-4">
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-admin flex items-center justify-center">
-            <ShieldCheck className="w-7 h-7 text-admin-foreground" />
+          <div className="w-14 h-14 rounded-2xl bg-admin/10 border border-admin/20 flex items-center justify-center">
+            <ShieldCheck className="w-7 h-7 text-admin" />
           </div>
           <div>
-            <h1 className="font-display text-3xl font-bold">Admin Dashboard</h1>
+            <h1 className="font-display text-3xl font-bold">Kitchen Command</h1>
             <p className="text-muted-foreground">ZYNK Platform Overview</p>
           </div>
         </div>
@@ -245,11 +245,11 @@ export const AdminDashboard = () => {
         <CutoffBanner />
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-          <StatCard icon={Users} value={stats.totalCustomers} label="Customers" color="primary" />
-          <StatCard icon={ChefHat} value={stats.approvedChefs} label="Active Chefs" color="chef" />
-          <StatCard icon={Calendar} value={stats.activeSubscriptions} label="Active Subs" color="accent" />
-          <StatCard icon={Clock} value={stats.pendingChefs} label="Pending Chefs" color="warning" />
-          <StatCard icon={TrendingUp} value={stats.tomorrowMeals} label="Tomorrow Meals" color="info" />
+          <StatCard icon={Users} value={stats.totalCustomers} label="Members" color="primary" />
+          <StatCard icon={ChefHat} value={stats.approvedChefs} label="Home Chefs" color="chef" />
+          <StatCard icon={Calendar} value={stats.activeSubscriptions} label="Active Plans" color="primary" />
+          <StatCard icon={Clock} value={stats.pendingChefs} label="Awaiting Review" color="warning" />
+          <StatCard icon={TrendingUp} value={stats.tomorrowMeals} label="Tomorrow's Meals" color="info" />
         </div>
 
         <Tabs defaultValue="approvals" className="space-y-6">

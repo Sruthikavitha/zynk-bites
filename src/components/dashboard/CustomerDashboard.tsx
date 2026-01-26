@@ -56,32 +56,32 @@ const CutoffBanner = () => {
 
   if (status === 'LOCKED') {
     return (
-      <div className="mb-6 p-4 rounded-xl bg-destructive/10 border border-destructive/20 flex items-center gap-3 animate-slide-up">
-        <div className="w-10 h-10 rounded-full bg-destructive/20 flex items-center justify-center">
-          <Lock className="w-5 h-5 text-destructive" />
+      <div className="mb-6 p-4 rounded-2xl bg-muted/80 border border-border/50 flex items-center gap-3 animate-slide-up">
+        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+          <Lock className="w-5 h-5 text-muted-foreground" />
         </div>
         <div>
-          <p className="font-medium text-destructive">Tomorrow's meal is finalized</p>
-          <p className="text-sm text-destructive/80">Changes will apply from day after tomorrow</p>
+          <p className="font-medium text-foreground">Tomorrow's meal is in the oven</p>
+          <p className="text-sm text-muted-foreground">Changes will apply from day after</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="mb-6 p-4 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-between animate-slide-up">
+    <div className="mb-6 p-4 rounded-2xl bg-primary/5 border border-primary/20 flex items-center justify-between animate-slide-up">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center">
-          <Clock className="w-5 h-5 text-accent" />
+        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+          <Clock className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <p className="font-medium text-accent">Tomorrow's meal is editable</p>
-          <p className="text-sm text-accent/80">Skip, swap, or change address</p>
+          <p className="font-medium text-primary">Kitchen is still open</p>
+          <p className="text-sm text-muted-foreground">You can still adjust tomorrow's meal</p>
         </div>
       </div>
       <div className="text-right">
-        <p className="text-xs text-accent/70 uppercase tracking-wide">Cutoff in</p>
-        <p className="font-mono text-xl font-bold text-accent">{timeLeft}</p>
+        <p className="text-xs text-muted-foreground uppercase tracking-wide">Closes in</p>
+        <p className="font-mono text-xl font-bold text-primary">{timeLeft}</p>
       </div>
     </div>
   );
@@ -381,8 +381,8 @@ export const CustomerDashboard = () => {
   return (
     <div className="container py-8 px-4">
       <div className="max-w-4xl mx-auto">
-        <h1 className="font-display text-3xl font-bold mb-2">Hey, {user?.name}!</h1>
-        <p className="text-muted-foreground mb-6">Here's what's cooking for you</p>
+        <h1 className="font-display text-3xl font-bold mb-2">Welcome home, {user?.name}!</h1>
+        <p className="text-muted-foreground mb-6">Your personal kitchen is ready</p>
 
         <CutoffBanner />
 
@@ -391,11 +391,11 @@ export const CustomerDashboard = () => {
 
         {/* Order Tracking */}
         {customerOrders.length > 0 && customerOrders.some(o => o.status !== 'scheduled') && (
-          <Card className="mb-6 shadow-card border-primary/20">
+          <Card className="mb-6 shadow-soft border-primary/20">
             <CardHeader>
               <CardTitle className="font-display flex items-center gap-2">
                 <Package className="w-5 h-5 text-primary" />
-                Order Tracking
+                Your Meal Journey
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -411,36 +411,64 @@ export const CustomerDashboard = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Health Snapshot Card */}
+        <Card className="mb-6 shadow-soft bg-gradient-to-br from-primary/5 to-accent/5 border-primary/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="font-display text-lg flex items-center gap-2">
+              <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+              Your Health Snapshot
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center p-3 rounded-xl bg-card/80">
+                <p className="text-2xl font-bold text-primary">{dailyMeals.filter(m => !m.isSkipped).length}</p>
+                <p className="text-xs text-muted-foreground">Meals this week</p>
+              </div>
+              <div className="text-center p-3 rounded-xl bg-card/80">
+                <p className="text-2xl font-bold text-primary">~{Math.round((dailyMeals.filter(m => !m.isSkipped).length || 1) * 450)}</p>
+                <p className="text-xs text-muted-foreground">Avg. calories</p>
+              </div>
+              <div className="text-center p-3 rounded-xl bg-card/80">
+                <p className="text-2xl font-bold text-primary">{dailyMeals.filter(m => m.isSkipped).length}</p>
+                <p className="text-xs text-muted-foreground">Days skipped</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
         {/* Subscription & Chef Info */}
         <div className="grid md:grid-cols-2 gap-4 mb-6">
-          <Card className="shadow-card">
+          <Card className="shadow-soft">
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center">
-                  <CheckCircle2 className="w-6 h-6 text-accent" />
+                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <p className="font-medium">Active Subscription</p>
-                  <p className="text-sm text-muted-foreground capitalize">{subscription?.plan} Plan • {subscription?.mealTime} meals</p>
+                  <p className="font-medium">Your Plan</p>
+                  <p className="text-sm text-muted-foreground capitalize">{subscription?.plan} • {subscription?.mealTime} meals</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="shadow-card">
+          <Card className="shadow-soft">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-chef/20 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-2xl bg-chef/10 flex items-center justify-center">
                     <ChefHat className="w-6 h-6 text-chef" />
                   </div>
                   <div>
-                    <p className="font-medium">{selectedChef?.name || 'No Chef Selected'}</p>
-                    <p className="text-sm text-muted-foreground">{selectedChef?.specialty || 'Select a chef'}</p>
+                    <p className="font-medium">{selectedChef?.name || 'Choose Your Chef'}</p>
+                    <p className="text-sm text-muted-foreground">{selectedChef?.specialty || 'Pick a home cook'}</p>
                   </div>
                 </div>
                 {canModify && (
-                  <Button size="sm" variant="outline" onClick={() => setShowChefSelect(true)}>
+                  <Button size="sm" variant="outline" className="rounded-full" onClick={() => setShowChefSelect(true)}>
                     <Settings className="w-4 h-4" />
                   </Button>
                 )}
@@ -451,19 +479,20 @@ export const CustomerDashboard = () => {
 
         {/* Address Toggle */}
         {(customer?.homeAddress || customer?.workAddress) && (
-          <Card className="mb-6 shadow-card">
+          <Card className="mb-6 shadow-soft">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <MapPin className="w-5 h-5 text-primary" />
                   <div>
-                    <p className="font-medium">Delivery to: {subscription?.activeAddressType || 'home'}</p>
+                    <p className="font-medium">Delivering to: {subscription?.activeAddressType || 'home'}</p>
                     <p className="text-sm text-muted-foreground">{subscription?.address.street}, {subscription?.address.city}</p>
                   </div>
                 </div>
                 {canModify && (
                   <div className="flex gap-2">
                     <Button size="sm" variant={subscription?.activeAddressType === 'home' ? 'default' : 'outline'} 
+                      className="rounded-full"
                       onClick={() => handleSwitchAddress('home')} disabled={!customer?.homeAddress}>
                       <Home className="w-4 h-4 mr-1" /> Home
                     </Button>

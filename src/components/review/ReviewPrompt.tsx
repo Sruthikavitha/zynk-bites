@@ -28,11 +28,11 @@ export const ReviewPrompt = ({ orders, onSubmitReview, onDismiss }: ReviewPrompt
 
   return (
     <>
-      <Card className="mb-6 shadow-card border-warning/30 bg-warning/5">
+      <Card className="mb-6 shadow-soft border-primary/20 bg-secondary/50">
         <CardHeader className="pb-3">
           <CardTitle className="font-display text-lg flex items-center gap-2">
-            <Star className="w-5 h-5 text-warning" />
-            Rate Your Recent Meals
+            <Star className="w-5 h-5 text-primary" />
+            How was your meal?
           </CardTitle>
         </CardHeader>
         <CardContent>

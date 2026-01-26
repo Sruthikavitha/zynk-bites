@@ -217,59 +217,59 @@ export const ChefDashboard = () => {
     <div className="container py-8 px-4">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-chef flex items-center justify-center">
-            <ChefHat className="w-7 h-7 text-chef-foreground" />
+          <div className="w-14 h-14 rounded-2xl bg-chef/10 border border-chef/20 flex items-center justify-center">
+            <ChefHat className="w-7 h-7 text-chef" />
           </div>
           <div>
-            <h1 className="font-display text-3xl font-bold">Chef Dashboard</h1>
-            <p className="text-muted-foreground">Welcome back, {user?.name}</p>
+            <h1 className="font-display text-3xl font-bold">Your Kitchen</h1>
+            <p className="text-muted-foreground">Welcome back, Chef {user?.name}</p>
           </div>
         </div>
 
         {/* Finalization Banner */}
-        <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${canModify ? 'bg-accent/10 border border-accent/20' : 'bg-warning/10 border border-warning/20'}`}>
-          <Clock className={`w-5 h-5 ${canModify ? 'text-accent' : 'text-warning'}`} />
-          <p className={canModify ? 'text-accent' : 'text-warning'}>
-            {canModify ? 'Tomorrow\'s orders are finalized. Ready for preparation!' : 'Orders not yet finalized. Check back after 8 PM.'}
+        <div className={`mb-6 p-4 rounded-2xl flex items-center gap-3 ${canModify ? 'bg-primary/5 border border-primary/20' : 'bg-muted/80 border border-border/50'}`}>
+          <Clock className={`w-5 h-5 ${canModify ? 'text-primary' : 'text-muted-foreground'}`} />
+          <p className={canModify ? 'text-primary' : 'text-foreground'}>
+            {canModify ? 'Tomorrow\'s prep list is ready! Time to cook.' : 'Orders still coming in. Final list after 8 PM.'}
           </p>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <Card className="shadow-card">
+          <Card className="shadow-soft">
             <CardContent className="pt-6">
               <p className="text-3xl font-bold text-chef">{orders.length}</p>
               <p className="text-sm text-muted-foreground">Tomorrow's Orders</p>
             </CardContent>
           </Card>
-          <Card className="shadow-card">
+          <Card className="shadow-soft">
             <CardContent className="pt-6">
-              <p className="text-3xl font-bold text-warning">{orders.filter(o => o.status === 'pending').length}</p>
-              <p className="text-sm text-muted-foreground">Pending</p>
+              <p className="text-3xl font-bold text-muted-foreground">{orders.filter(o => o.status === 'pending').length}</p>
+              <p className="text-sm text-muted-foreground">Waiting</p>
             </CardContent>
           </Card>
-          <Card className="shadow-card">
+          <Card className="shadow-soft">
             <CardContent className="pt-6">
               <p className="text-3xl font-bold text-info">{orders.filter(o => o.status === 'preparing').length}</p>
-              <p className="text-sm text-muted-foreground">Preparing</p>
+              <p className="text-sm text-muted-foreground">Cooking</p>
             </CardContent>
           </Card>
-          <Card className="shadow-card">
+          <Card className="shadow-soft">
             <CardContent className="pt-6">
-              <p className="text-3xl font-bold text-accent">{orders.filter(o => o.status === 'ready').length}</p>
-              <p className="text-sm text-muted-foreground">Ready</p>
+              <p className="text-3xl font-bold text-primary">{orders.filter(o => o.status === 'ready').length}</p>
+              <p className="text-sm text-muted-foreground">Ready for Pickup</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Orders List */}
-        <Card className="shadow-elevated mb-6">
+        <Card className="shadow-soft mb-6">
           <CardHeader>
             <CardTitle className="font-display flex items-center gap-2">
               <Clock className="w-5 h-5 text-primary" />
-              Tomorrow's Orders
+              Tomorrow's Prep List
             </CardTitle>
-            <CardDescription>Orders finalized after 8 PM cutoff</CardDescription>
+            <CardDescription>Orders confirmed after evening cutoff</CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -277,18 +277,20 @@ export const ChefDashboard = () => {
             ) : orders.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <UtensilsCrossed className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p>No orders for tomorrow</p>
+                <p>No orders for tomorrow yet</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {orders.map((order) => (
-                  <div key={order.id} className="p-4 rounded-xl bg-secondary/50">
+                  <div key={order.id} className="p-4 rounded-2xl bg-secondary/50 border border-border/30">
                     <div className="flex items-start justify-between mb-3">
                       <div>
                         <h3 className="font-medium">{order.mealName}</h3>
                         <p className="text-sm text-muted-foreground">For: {order.customerName}</p>
                       </div>
-                      <Badge variant={order.status === 'ready' ? 'default' : 'outline'} className="capitalize">{order.status}</Badge>
+                      <Badge variant={order.status === 'ready' ? 'default' : 'outline'} className="capitalize rounded-full">
+                        {order.status === 'pending' ? 'Waiting' : order.status === 'preparing' ? 'Cooking' : 'Ready'}
+                      </Badge>
                     </div>
                     
                     {order.selectedCustomizations && order.selectedCustomizations.length > 0 && (
@@ -310,12 +312,12 @@ export const ChefDashboard = () => {
                     {canModify && order.status !== 'ready' && (
                       <div className="flex gap-2">
                         {order.status === 'pending' && (
-                          <Button size="sm" variant="outline" onClick={() => handleUpdateOrderStatus(order.id, 'preparing')}>
-                            Start Preparing
+                          <Button size="sm" variant="outline" className="rounded-full" onClick={() => handleUpdateOrderStatus(order.id, 'preparing')}>
+                            Start Cooking
                           </Button>
                         )}
                         {order.status === 'preparing' && (
-                          <Button size="sm" className="gradient-accent" onClick={() => handleUpdateOrderStatus(order.id, 'ready')}>
+                          <Button size="sm" className="gradient-herbal rounded-full" onClick={() => handleUpdateOrderStatus(order.id, 'ready')}>
                             Mark Ready
                           </Button>
                         )}
@@ -352,10 +354,10 @@ export const ChefDashboard = () => {
 };
 
 const DishCard = ({ dish }: { dish: Dish }) => (
-  <div className="p-4 rounded-xl bg-secondary/50 flex items-center justify-between">
+  <div className="p-4 rounded-2xl bg-secondary/50 border border-border/30 flex items-center justify-between">
     <div className="flex items-center gap-4">
-      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${dish.category === 'veg' ? 'bg-accent/20' : 'bg-destructive/20'}`}>
-        {dish.category === 'veg' ? <Leaf className="w-5 h-5 text-accent" /> : <Drumstick className="w-5 h-5 text-destructive" />}
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${dish.category === 'veg' ? 'bg-primary/10' : 'bg-destructive/10'}`}>
+        {dish.category === 'veg' ? <Leaf className="w-5 h-5 text-primary" /> : <Drumstick className="w-5 h-5 text-destructive" />}
       </div>
       <div>
         <h3 className="font-medium">{dish.name}</h3>
@@ -365,8 +367,8 @@ const DishCard = ({ dish }: { dish: Dish }) => (
         </div>
       </div>
     </div>
-    <Badge variant={dish.allowsCustomization ? 'default' : 'secondary'}>
-      {dish.allowsCustomization ? 'Customizable' : 'Fixed'}
+    <Badge variant={dish.allowsCustomization ? 'default' : 'secondary'} className="rounded-full">
+      {dish.allowsCustomization ? 'Flexible' : 'Set Menu'}
     </Badge>
   </div>
 );

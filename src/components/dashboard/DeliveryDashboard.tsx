@@ -40,22 +40,22 @@ const CutoffBanner = () => {
 
   if (!isLocked) {
     return (
-      <div className="mb-6 p-4 rounded-xl bg-warning/10 border border-warning/30 flex items-center gap-3">
-        <AlertCircle className="w-5 h-5 text-warning" />
+      <div className="mb-6 p-4 rounded-2xl bg-muted/80 border border-border/50 flex items-center gap-3">
+        <AlertCircle className="w-5 h-5 text-muted-foreground" />
         <div>
-          <p className="font-medium text-warning">Orders Not Finalized</p>
-          <p className="text-sm text-muted-foreground">Tomorrow's orders are still being modified by customers. Check back after 8 PM.</p>
+          <p className="font-medium text-foreground">Kitchen still prepping</p>
+          <p className="text-sm text-muted-foreground">Orders finalize after 8 PM. Check back soon!</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="mb-6 p-4 rounded-xl bg-accent/10 border border-accent/30 flex items-center gap-3">
-      <Lock className="w-5 h-5 text-accent" />
+    <div className="mb-6 p-4 rounded-2xl bg-primary/5 border border-primary/20 flex items-center gap-3">
+      <Lock className="w-5 h-5 text-primary" />
       <div>
-        <p className="font-medium text-accent">Orders Finalized</p>
-        <p className="text-sm text-muted-foreground">Tomorrow's delivery list is ready. No further changes from customers.</p>
+        <p className="font-medium text-primary">Routes are set</p>
+        <p className="text-sm text-muted-foreground">Tomorrow's deliveries are ready for pickup.</p>
       </div>
     </div>
   );
@@ -77,10 +77,10 @@ const DeliveryCard = ({
 
   return (
     <div 
-      className={`p-4 rounded-xl border transition-all ${
+      className={`p-4 rounded-2xl border transition-all ${
         isDelivered 
-          ? 'bg-muted/50 border-border opacity-60' 
-          : 'bg-card border-border shadow-sm hover:shadow-md'
+          ? 'bg-muted/50 border-border/30 opacity-60' 
+          : 'bg-secondary/50 border-border/40 hover:border-primary/30'
       }`}
     >
       <div className="flex items-start justify-between gap-4">
@@ -256,12 +256,12 @@ export const DeliveryDashboard = () => {
     <div className="container py-8 px-4">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-delivery flex items-center justify-center">
-            <Truck className="w-7 h-7 text-delivery-foreground" />
+          <div className="w-14 h-14 rounded-2xl bg-delivery/10 border border-delivery/20 flex items-center justify-center">
+            <Truck className="w-7 h-7 text-delivery" />
           </div>
           <div>
-            <h1 className="font-display text-3xl font-bold">Delivery Dashboard</h1>
-            <p className="text-muted-foreground">Welcome, {user?.name}</p>
+            <h1 className="font-display text-3xl font-bold">Delivery Routes</h1>
+            <p className="text-muted-foreground">Hello, {user?.name}! Here are your deliveries.</p>
           </div>
         </div>
 
