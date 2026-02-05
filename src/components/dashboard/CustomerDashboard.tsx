@@ -16,7 +16,7 @@ import { OrderTracker } from '@/components/order/OrderTracker';
 import { ReviewPrompt } from '@/components/review/ReviewPrompt';
 import { StarRating } from '@/components/review/ReviewForm';
 import { MealRecommendationWidget } from '@/components/MealRecommendationWidget';
-import { MealSkipDecisionWidget } from '@/components/MealSkipDecisionWidget';
+import { UserMeals } from '@/components/dashboard/UserMeals';
 import type { Subscription, DailyMeal, Address, Meal, PlanType, MealTime, Chef, Dish, Customer, AddressType, Order } from '@/types';
 
 type CutoffStatus = 'OPEN' | 'LOCKED';
@@ -576,41 +576,13 @@ export const CustomerDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Meal Skip Decision Assistant */}
-        <Card className="mb-6 shadow-soft border-primary/10">
-          <CardHeader>
-            <CardTitle className="font-display">Meal Skip Decision Assistant</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <MealSkipDecisionWidget />
-          </CardContent>
-        </Card>
+        {/* Weekly Meals */}
+        <UserMeals />
 
-        {/* Upcoming Meals */}
-        <Card className="shadow-card">
-          <CardHeader><CardTitle className="font-display">Upcoming Meals</CardTitle></CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {dailyMeals.filter(dm => !dm.isSkipped).slice(0, 7).map((meal) => (
-                <div key={meal.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <UtensilsCrossed className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">{getMealName(meal.currentMealId)}</p>
-                      <p className="text-xs text-muted-foreground capitalize">{meal.mealTime}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">{new Date(meal.date).toLocaleDateString('en-US', { weekday: 'short' })}</p>
-                    <p className="text-xs text-muted-foreground">{meal.date}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Dishes Chart removed */}
+
+        {/* Meal Skip Decision Assistant removed */}
+
       </div>
     </div>
   );
