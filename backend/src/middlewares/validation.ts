@@ -41,6 +41,27 @@ export const swapMealSchema = z.object({
   newMealId: z.number().int().min(1, 'newMealId must be a valid number'),
 });
 
+// Schema for meal recommendations
+export const recommendationSchema = z.object({
+  userPreferences: z.object({
+    dietType: z.enum(['vegetarian', 'non-vegetarian', 'vegan', 'keto', 'gluten-free']),
+    healthGoal: z.enum(['weight-loss', 'muscle-gain', 'maintenance', 'energy', 'balanced']),
+    allergies: z.array(z.string()).default([]),
+    dislikedFoods: z.array(z.string()).default([]),
+    mealHistory: z.array(z.string()).default([]),
+  }),
+});
+
+// Schema for meal skip decision
+export const skipDecisionSchema = z.object({
+  mealType: z.enum(['breakfast', 'lunch', 'dinner']),
+  skipCount: z.number().int().min(0, 'skipCount must be non-negative'),
+  healthGoal: z.enum(['weight-loss', 'muscle-gain', 'maintenance', 'energy', 'balanced']),
+  subscriptionStatus: z.enum(['active', 'paused', 'cancelled']),
+  consecutiveSkips: z.number().int().min(0).optional().default(0),
+  lastMealTime: z.string().datetime().optional(),
+});
+
 // Validation middleware factory: Validates req.body against schema
 export const validateRequest = (schema: z.ZodSchema) => {
   return (req: express.Request, res: express.Response, next: express.NextFunction) => {

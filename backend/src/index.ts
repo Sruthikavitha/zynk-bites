@@ -23,6 +23,8 @@ import cors from "cors";
 import { initializeDatabase } from "./config/database.js";
 import authRoutes from "./routes/authRoutes.js";
 import subscriptionRoutes from "./routes/subscriptionRoutes.js";
+import recommendationRoutes from "./routes/recommendationRoutes.js";
+import skipDecisionRoutes from "./routes/skipDecisionRoutes.js";
 import { errorHandler, notFoundHandler } from "./middlewares/errorHandler.js";
 
 // -----------------------------------------------------------------------------
@@ -73,6 +75,8 @@ async function startServer() {
     // 2️⃣ Register routes AFTER DB is ready
     app.use("/api/auth", authRoutes);
     app.use("/api/subscriptions", subscriptionRoutes);
+    app.use("/api/recommendations", recommendationRoutes);
+    app.use("/api/skip-decision", skipDecisionRoutes);
 
     // 3️⃣ 404 handler
     app.use(notFoundHandler);

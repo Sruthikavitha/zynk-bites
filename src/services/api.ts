@@ -22,7 +22,11 @@ import type {
   NutritionalInfo,
   CustomizationOption,
   SelectedCustomization,
-  Review
+  Review,
+  UserPreferences,
+  MealRecommendation,
+  DietType,
+  HealthGoal
 } from '@/types';
 import * as db from './db';
 
@@ -1608,3 +1612,498 @@ export const toggleDishSpecial = (
     message: isSpecial ? 'Dish marked as special' : 'Dish unmarked as special' 
   };
 };
+
+// ========================================
+// MEAL RECOMMENDATION ENDPOINTS
+// ========================================
+
+/**
+ * POST /api/recommendations
+ * Get personalized meal recommendations based on user preferences
+ */
+export const getMealRecommendations = (
+  userPreferences: UserPreferences
+): ApiResponse<MealRecommendation> => {
+  try {
+    // Get all available meals/dishes
+    const availableMeals = db.getAllDishes();
+
+    if (availableMeals.length === 0) {
+      return { 
+        success: false, 
+        error: 'No meals available for recommendation' 
+      };
+    }
+
+    // Generate recommendations
+    const recommendation = generateRecommendations({
+      userPreferences,
+      availableMeals,
+    });
+
+    return {
+      success: true,
+      data: recommendation,
+      message: 'Meal recommendations generated successfully',
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to generate meal recommendations',
+    };
+  }
+};
+
+/**
+ * Filter meals based on user preferences
+ */
+const filterMealsByPreferences = (
+  meals: Dish[],
+  preferences: UserPreferences
+): Dish[] => {
+  return meals.filter((meal) => {
+    // Check diet type
+    if (preferences.dietType === 'vegetarian' && meal.category === 'non-veg') {
+      return false;
+    }
+    if (preferences.dietType === 'vegan' && meal.category === 'non-veg') {
+      return false;
+    }
+
+    // Check allergies
+    const mealLower = meal.name.toLowerCase();
+    for (const allergen of preferences.allergies) {
+      if (mealLower.includes(allergen.toLowerCase())) {
+        return false;
+      }
+    }
+
+    // Check disliked foods
+    for (const dislike of preferences.dislikedFoods) {
+      if (mealLower.includes(dislike.toLowerCase())) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+};
+
+/**
+ * Generate meal recommendations
+ */
+const generateRecommendations = (request: {
+  userPreferences: UserPreferences;
+  availableMeals: Dish[];
+}): MealRecommendation => {
+  const { userPreferences, availableMeals } = request;
+
+  // Filter meals based on preferences
+  const filteredMeals = filterMealsByPreferences(availableMeals, userPreferences);
+
+  if (filteredMeals.length < 3) {
+    throw new Error('Not enough meals available that match your preferences');
+  }
+
+  // Get recommendations for each meal time
+  const breakfast = recommendMealForTime(
+    filteredMeals,
+    'breakfast',
+    userPreferences,
+    []
+  );
+
+  const lunch = recommendMealForTime(
+    filteredMeals,
+    'lunch',
+    userPreferences,
+    [breakfast.mealId]
+  );
+
+  const dinner = recommendMealForTime(
+    filteredMeals,
+    'dinner',
+    userPreferences,
+    [breakfast.mealId, lunch.mealId]
+  );
+
+  return {
+    breakfast,
+    lunch,
+    dinner,
+    shortReason: generateShortReason(userPreferences),
+  };
+};
+
+/**
+ * Recommend a meal for a specific time of day
+ */
+const recommendMealForTime = (
+  meals: Dish[],
+  mealTime: 'breakfast' | 'lunch' | 'dinner',
+  preferences: UserPreferences,
+  excludeIds: string[]
+): { mealId: string; mealName: string; reason: string } => {
+  const availableMeals = meals.filter((m) => !excludeIds.includes(m.id));
+
+  // Score meals based on nutritional goals and meal time
+  const scoredMeals = availableMeals.map((meal) => {
+    let score = 0;
+
+    // Health goal alignment
+    if (preferences.healthGoal === 'weight-loss') {
+      if (meal.nutritionalInfo.calories < 450) score += 3;
+      if (meal.nutritionalInfo.protein > 25) score += 2;
+      if (meal.nutritionalInfo.fat < 12) score += 2;
+    } else if (preferences.healthGoal === 'muscle-gain') {
+      if (meal.nutritionalInfo.protein > 35) score += 3;
+      if (meal.nutritionalInfo.carbs > 45) score += 2;
+      if (meal.nutritionalInfo.calories > 500) score += 1;
+    } else if (preferences.healthGoal === 'energy') {
+      if (meal.nutritionalInfo.calories > 450) score += 2;
+      if (meal.nutritionalInfo.carbs > 45) score += 2;
+      if (meal.nutritionalInfo.protein > 20) score += 1;
+    } else {
+      score += meal.nutritionalInfo.protein > 18 ? 1 : 0;
+      score += meal.nutritionalInfo.carbs > 40 ? 1 : 0;
+      score += meal.nutritionalInfo.fat > 10 && meal.nutritionalInfo.fat < 20 ? 1 : 0;
+    }
+
+    // Meal time preferences
+    if (mealTime === 'breakfast') {
+      if (meal.nutritionalInfo.calories < 500) score += 2;
+      if (meal.nutritionalInfo.carbs > 40) score += 1;
+    } else if (mealTime === 'lunch') {
+      if (meal.nutritionalInfo.protein > 25) score += 1;
+      if (meal.nutritionalInfo.calories > 400 && meal.nutritionalInfo.calories < 600) score += 2;
+    } else if (mealTime === 'dinner') {
+      if (meal.nutritionalInfo.calories < 500) score += 1;
+      if (meal.nutritionalInfo.protein > 20) score += 2;
+    }
+
+    // Bonus for diversity
+    const mealNameLower = meal.name.toLowerCase();
+    const inHistory = preferences.mealHistory.some((h) =>
+      mealNameLower.includes(h.toLowerCase()) || h.toLowerCase().includes(mealNameLower)
+    );
+    if (!inHistory) score += 2;
+
+    return { meal, score };
+  });
+
+  // Sort by score and pick the best one
+  const bestMeal = scoredMeals.sort((a, b) => b.score - a.score)[0];
+
+  return {
+    mealId: bestMeal.meal.id,
+    mealName: bestMeal.meal.name,
+    reason: generateMealReason(bestMeal.meal, preferences, mealTime),
+  };
+};
+
+/**
+ * Generate a reason for the meal recommendation
+ */
+const generateMealReason = (
+  meal: Dish,
+  preferences: UserPreferences,
+  mealTime: string
+): string => {
+  const reasons: string[] = [];
+
+  if (preferences.healthGoal === 'weight-loss') {
+    if (meal.nutritionalInfo.calories < 450) {
+      reasons.push('low in calories');
+    }
+    if (meal.nutritionalInfo.protein > 25) {
+      reasons.push('high in protein for satiety');
+    }
+  } else if (preferences.healthGoal === 'muscle-gain') {
+    if (meal.nutritionalInfo.protein > 35) {
+      reasons.push('excellent protein source');
+    }
+    if (meal.nutritionalInfo.carbs > 45) {
+      reasons.push('good carbs for energy');
+    }
+  } else if (preferences.healthGoal === 'energy') {
+    if (meal.nutritionalInfo.carbs > 45) {
+      reasons.push('provides sustained energy');
+    }
+  }
+
+  if (mealTime === 'breakfast') {
+    reasons.push('perfect for breakfast energy');
+  } else if (mealTime === 'lunch') {
+    reasons.push('nutritious lunch option');
+  } else if (mealTime === 'dinner') {
+    reasons.push('light and satisfying dinner');
+  }
+
+  if (meal.allowsCustomization) {
+    reasons.push('can be customized to your preference');
+  }
+
+  return reasons.join(' • ');
+};
+
+/**
+ * Generate a short overall recommendation reason
+ */
+const generateShortReason = (preferences: UserPreferences): string => {
+  const parts: string[] = [];
+
+  if (preferences.healthGoal === 'weight-loss') {
+    parts.push('Recommended for weight loss goals');
+  } else if (preferences.healthGoal === 'muscle-gain') {
+    parts.push('Recommended for muscle building');
+  } else if (preferences.healthGoal === 'energy') {
+    parts.push('Recommended for sustained energy');
+  } else {
+    parts.push('Recommended for balanced nutrition');
+  }
+
+  if (preferences.dietType === 'vegetarian') {
+    parts.push('Vegetarian options selected');
+  } else if (preferences.dietType === 'vegan') {
+    parts.push('Vegan options selected');
+  } else if (preferences.dietType === 'keto') {
+    parts.push('Low-carb keto-friendly meals selected');
+  }
+
+  return parts.join(' • ');
+};
+
+// ========================================
+// MEAL SKIP DECISION ENDPOINTS (POST /api/skip-decision/*)
+// ========================================
+
+/**
+ * POST /api/skip-decision
+ * Get personalized guidance on whether to skip a meal
+ */
+interface SkipDecisionRequest {
+  mealType: 'breakfast' | 'lunch' | 'dinner';
+  skipCount: number;
+  healthGoal: HealthGoal;
+  subscriptionStatus: 'active' | 'paused' | 'cancelled';
+  consecutiveSkips?: number;
+  lastMealTime?: string;
+}
+
+interface LightMealSuggestion {
+  name: string;
+  calories: number;
+  description: string;
+}
+
+interface SkipDecisionResponse {
+  action: 'skip' | 'suggest_light_meal' | 'reschedule';
+  message: string;
+  riskScore: number;
+  lightMealSuggestions?: LightMealSuggestion[];
+  healthTips?: string[];
+}
+
+export const getSkipDecision = (request: SkipDecisionRequest): SkipDecisionResponse => {
+  // Calculate risk score (0-10 scale)
+  let riskScore = 0;
+
+  // Factor 1: Skip frequency this week (0-3 points)
+  if (request.skipCount >= 5) riskScore += 3;
+  else if (request.skipCount >= 3) riskScore += 2;
+  else if (request.skipCount >= 1) riskScore += 1;
+
+  // Factor 2: Consecutive skips (0-2 points)
+  const consecutiveSkips = request.consecutiveSkips || 0;
+  if (consecutiveSkips >= 2) riskScore += 2;
+  else if (consecutiveSkips === 1) riskScore += 1;
+
+  // Factor 3: Health goal impact (0-2 points)
+  if (request.healthGoal === 'muscle-gain') riskScore += 2; // Needs regular protein
+  else if (request.healthGoal === 'energy-boost') riskScore += 1.5; // Needs regular energy
+  else if (request.healthGoal === 'weight-loss') riskScore -= 1; // Can handle occasional skips
+  else if (request.healthGoal === 'balanced') riskScore += 0; // Neutral
+
+  // Factor 4: Meal type importance (0-1 point)
+  if (request.mealType === 'breakfast') riskScore += 1; // Breakfast most important
+  else if (request.mealType === 'dinner') riskScore += 0.5; // Dinner somewhat important
+  // lunch neutral
+
+  // Factor 5: Subscription status
+  if (request.subscriptionStatus === 'paused' || request.subscriptionStatus === 'cancelled') {
+    riskScore += 3;
+  }
+
+  // Clamp between 0-10
+  riskScore = Math.max(0, Math.min(10, riskScore));
+
+  // Check subscription status first
+  if (request.subscriptionStatus !== 'active') {
+    return {
+      action: 'reschedule',
+      message: `Your subscription is currently ${request.subscriptionStatus}. Please reactivate your subscription to continue with meal planning. Contact support for assistance.`,
+      riskScore: 10,
+      healthTips: [
+        'Reactivate your subscription to get personalized meal guidance',
+        'Contact our support team if you need help with your subscription',
+      ],
+    };
+  }
+
+  // Determine action based on risk score
+  let action: 'skip' | 'suggest_light_meal' | 'reschedule';
+  let message: string;
+
+  if (riskScore < 4) {
+    action = 'skip';
+    message = `Low risk: It's safe to skip ${request.mealType} today. You've only skipped ${request.skipCount} meal(s) this week, and your ${request.healthGoal} goal allows for occasional skips. Listen to your body and stay hydrated!`;
+  } else if (riskScore < 7) {
+    action = 'suggest_light_meal';
+    message = `Moderate risk: Instead of skipping ${request.mealType} entirely, consider a light meal. You've skipped ${request.skipCount} meal(s) this week, and with your ${request.healthGoal} goal, maintaining some nutrition is important. We've suggested some light options below.`;
+  } else {
+    action = 'suggest_light_meal';
+    message = `High risk: We strongly recommend having a light meal instead of skipping ${request.mealType}. With ${request.consecutiveSkips} consecutive skip(s) and your ${request.healthGoal} goal, regular nutrition is essential for your health goals. Check the light meal suggestions below.`;
+  }
+
+  // Generate light meal suggestions based on meal type and health goal
+  const lightMealSuggestions = generateLightMealSuggestions(
+    request.mealType,
+    request.healthGoal
+  );
+
+  // Generate health tips based on profile
+  const healthTips = generateSkipHealthTips(
+    request.mealType,
+    request.healthGoal,
+    skipCount
+  );
+
+  return {
+    action,
+    message,
+    riskScore: Math.round(riskScore * 10) / 10, // Round to 1 decimal
+    lightMealSuggestions,
+    healthTips,
+  };
+};
+
+/**
+ * Generate light meal suggestions based on meal type and health goal
+ */
+const generateLightMealSuggestions = (
+  mealType: 'breakfast' | 'lunch' | 'dinner',
+  healthGoal: HealthGoal
+): LightMealSuggestion[] => {
+  const suggestions: Record<string, LightMealSuggestion[]> = {
+    breakfast: [
+      {
+        name: 'Greek Yogurt & Berries',
+        calories: 150,
+        description: 'Protein-rich yogurt with antioxidant berries',
+      },
+      {
+        name: 'Banana & Almond Butter',
+        calories: 200,
+        description: 'Quick energy with healthy fats',
+      },
+      {
+        name: 'Oatmeal with Honey',
+        calories: 180,
+        description: 'Sustained energy from complex carbs',
+      },
+    ],
+    lunch: [
+      {
+        name: 'Chicken Salad',
+        calories: 250,
+        description: 'Lean protein with fresh vegetables',
+      },
+      {
+        name: 'Hummus & Veggie Sticks',
+        calories: 180,
+        description: 'Plant-based protein with fiber',
+      },
+      {
+        name: 'Tuna Wrap',
+        calories: 280,
+        description: 'Omega-3 rich protein with whole grains',
+      },
+    ],
+    dinner: [
+      {
+        name: 'Grilled Fish & Steamed Broccoli',
+        calories: 300,
+        description: 'Light protein with essential nutrients',
+      },
+      {
+        name: 'Vegetable Soup',
+        calories: 150,
+        description: 'Warming and nutritious',
+      },
+      {
+        name: 'Egg Whites with Toast',
+        calories: 200,
+        description: 'Lean protein before bed',
+      },
+    ],
+  };
+
+  const baseSuggestions = suggestions[mealType] || suggestions.lunch;
+
+  // Adjust for health goal
+  if (healthGoal === 'muscle-gain') {
+    return baseSuggestions.map((meal) => ({
+      ...meal,
+      description: meal.description + ' (High protein)',
+    }));
+  } else if (healthGoal === 'weight-loss') {
+    return baseSuggestions.filter((meal) => meal.calories < 250);
+  } else if (healthGoal === 'energy-boost') {
+    return baseSuggestions.sort((a, b) => b.calories - a.calories);
+  }
+
+  return baseSuggestions;
+};
+
+/**
+ * Generate personalized health tips
+ */
+const generateSkipHealthTips = (
+  mealType: 'breakfast' | 'lunch' | 'dinner',
+  healthGoal: HealthGoal,
+  skipCount: number
+): string[] => {
+  const tips: string[] = [];
+
+  // General tip
+  if (mealType === 'breakfast') {
+    tips.push('Breakfast is your most important meal - it jumpstarts metabolism and sets energy levels for the day');
+  } else if (mealType === 'lunch') {
+    tips.push('Lunch maintains your energy levels throughout the afternoon - consider eating even if skipping dinner');
+  } else {
+    tips.push('A light dinner helps regulate sleep and recovery - avoid skipping if possible');
+  }
+
+  // Health goal-specific tips
+  if (healthGoal === 'muscle-gain') {
+    tips.push('For muscle gain, consistent protein intake throughout the day is crucial - try to maintain all meal times');
+    tips.push('Missing meals can reduce protein synthesis and muscle building potential');
+  } else if (healthGoal === 'weight-loss') {
+    tips.push('While occasional meal skipping can fit some diets, aim for balanced portions instead');
+    tips.push('Regular meals actually support metabolism better than sporadic eating');
+  } else if (healthGoal === 'energy-boost') {
+    tips.push('Consistent meals throughout the day maintain stable blood sugar and energy levels');
+    tips.push('Skipping meals can cause energy crashes and reduced productivity');
+  } else if (healthGoal === 'improved-digestion') {
+    tips.push('Regular meal timing helps establish healthy digestive rhythms');
+    tips.push('Avoid large gaps between meals for optimal digestive health');
+  }
+
+  // Frequency-based warning
+  if (skipCount >= 3) {
+    tips.push(`You've already skipped ${skipCount} meals this week - prioritize nutrition for the rest of the week`);
+  }
+
+  return tips;
+};
+

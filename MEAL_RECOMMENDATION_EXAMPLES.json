@@ -1,0 +1,177 @@
+{
+  "examples": [
+    {
+      "title": "Weight Loss - Vegetarian",
+      "request": {
+        "userPreferences": {
+          "dietType": "vegetarian",
+          "healthGoal": "weight-loss",
+          "allergies": ["dairy"],
+          "dislikedFoods": ["broccoli"],
+          "mealHistory": ["Salad", "Tofu Stir Fry"]
+        }
+      },
+      "response": {
+        "success": true,
+        "data": {
+          "breakfast": {
+            "mealId": "dish-5",
+            "mealName": "Oatmeal with Berries",
+            "reason": "low in calories • provides sustained energy • perfect for breakfast energy • can be customized to your preference"
+          },
+          "lunch": {
+            "mealId": "dish-9",
+            "mealName": "Chickpea Salad",
+            "reason": "low in calories • high in protein for satiety • nutritious lunch option • can be customized to your preference"
+          },
+          "dinner": {
+            "mealId": "dish-2",
+            "mealName": "Veggie Buddha Bowl",
+            "reason": "low in calories • high in protein for satiety • light and satisfying dinner • can be customized to your preference"
+          },
+          "shortReason": "Recommended for weight loss goals • Vegetarian options selected"
+        },
+        "message": "Meal recommendations generated successfully"
+      }
+    },
+    {
+      "title": "Muscle Gain - Non-Vegetarian",
+      "request": {
+        "userPreferences": {
+          "dietType": "non-vegetarian",
+          "healthGoal": "muscle-gain",
+          "allergies": ["shellfish"],
+          "dislikedFoods": ["mushrooms"],
+          "mealHistory": ["Chicken Rice"]
+        }
+      },
+      "response": {
+        "success": true,
+        "data": {
+          "breakfast": {
+            "mealId": "dish-6",
+            "mealName": "Egg White Omelet with Spinach",
+            "reason": "excellent protein source • provides sustained energy • perfect for breakfast energy • can be customized to your preference"
+          },
+          "lunch": {
+            "mealId": "dish-1",
+            "mealName": "Grilled Chicken Breast with Quinoa",
+            "reason": "excellent protein source • good carbs for energy • nutritious lunch option • can be customized to your preference"
+          },
+          "dinner": {
+            "mealId": "dish-3",
+            "mealName": "Salmon with Sweet Potato",
+            "reason": "excellent protein source • good carbs for energy • light and satisfying dinner • can be customized to your preference"
+          },
+          "shortReason": "Recommended for muscle building • Non-vegetarian options selected"
+        },
+        "message": "Meal recommendations generated successfully"
+      }
+    },
+    {
+      "title": "Energy - Vegan",
+      "request": {
+        "userPreferences": {
+          "dietType": "vegan",
+          "healthGoal": "energy",
+          "allergies": ["nuts", "sesame"],
+          "dislikedFoods": ["bitter greens"],
+          "mealHistory": ["Rice Bowl", "Pasta"]
+        }
+      },
+      "response": {
+        "success": true,
+        "data": {
+          "breakfast": {
+            "mealId": "dish-5",
+            "mealName": "Oatmeal with Berries",
+            "reason": "provides sustained energy • perfect for breakfast energy • can be customized to your preference"
+          },
+          "lunch": {
+            "mealId": "dish-7",
+            "mealName": "Lentil Dal with Brown Rice",
+            "reason": "provides sustained energy • good carbs for energy • nutritious lunch option • can be customized to your preference"
+          },
+          "dinner": {
+            "mealId": "dish-9",
+            "mealName": "Chickpea Salad",
+            "reason": "provides sustained energy • light and satisfying dinner • can be customized to your preference"
+          },
+          "shortReason": "Recommended for sustained energy • Vegan options selected"
+        },
+        "message": "Meal recommendations generated successfully"
+      }
+    },
+    {
+      "title": "Balanced - Keto",
+      "request": {
+        "userPreferences": {
+          "dietType": "keto",
+          "healthGoal": "balanced",
+          "allergies": [],
+          "dislikedFoods": [],
+          "mealHistory": ["Steak", "Salmon"]
+        }
+      },
+      "response": {
+        "success": true,
+        "data": {
+          "breakfast": {
+            "mealId": "dish-6",
+            "mealName": "Egg White Omelet with Spinach",
+            "reason": "perfect for breakfast energy • can be customized to your preference"
+          },
+          "lunch": {
+            "mealId": "dish-8",
+            "mealName": "Grilled Fish Fillet with Broccoli",
+            "reason": "nutritious lunch option • can be customized to your preference"
+          },
+          "dinner": {
+            "mealId": "dish-10",
+            "mealName": "Turkey Meatballs with Zucchini Noodles",
+            "reason": "light and satisfying dinner • can be customized to your preference"
+          },
+          "shortReason": "Recommended for balanced nutrition • Low-carb keto-friendly meals selected"
+        },
+        "message": "Meal recommendations generated successfully"
+      }
+    },
+    {
+      "title": "Error - Invalid Diet Type",
+      "request": {
+        "userPreferences": {
+          "dietType": "invalid-diet",
+          "healthGoal": "balanced",
+          "allergies": [],
+          "dislikedFoods": [],
+          "mealHistory": []
+        }
+      },
+      "response": {
+        "success": false,
+        "error": "Invalid user preferences",
+        "details": [
+          "Invalid enum value. Expected 'vegetarian' | 'non-vegetarian' | 'vegan' | 'keto' | 'gluten-free'"
+        ]
+      }
+    },
+    {
+      "title": "Error - Missing Field",
+      "request": {
+        "userPreferences": {
+          "dietType": "vegetarian",
+          "allergies": [],
+          "dislikedFoods": [],
+          "mealHistory": []
+        }
+      },
+      "response": {
+        "success": false,
+        "error": "Invalid user preferences",
+        "details": [
+          "healthGoal is required"
+        ]
+      }
+    }
+  ]
+}

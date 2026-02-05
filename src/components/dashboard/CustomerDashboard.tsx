@@ -15,6 +15,8 @@ import {
 import { OrderTracker } from '@/components/order/OrderTracker';
 import { ReviewPrompt } from '@/components/review/ReviewPrompt';
 import { StarRating } from '@/components/review/ReviewForm';
+import { MealRecommendationWidget } from '@/components/MealRecommendationWidget';
+import { MealSkipDecisionWidget } from '@/components/MealSkipDecisionWidget';
 import type { Subscription, DailyMeal, Address, Meal, PlanType, MealTime, Chef, Dish, Customer, AddressType, Order } from '@/types';
 
 type CutoffStatus = 'OPEN' | 'LOCKED';
@@ -563,6 +565,26 @@ export const CustomerDashboard = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Meal Recommendation Widget */}
+        <Card className="mb-6 shadow-soft border-primary/10">
+          <CardHeader>
+            <CardTitle className="font-display">Get Personalized Recommendations</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <MealRecommendationWidget />
+          </CardContent>
+        </Card>
+
+        {/* Meal Skip Decision Assistant */}
+        <Card className="mb-6 shadow-soft border-primary/10">
+          <CardHeader>
+            <CardTitle className="font-display">Meal Skip Decision Assistant</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <MealSkipDecisionWidget />
+          </CardContent>
+        </Card>
 
         {/* Upcoming Meals */}
         <Card className="shadow-card">

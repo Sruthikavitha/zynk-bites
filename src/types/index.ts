@@ -2,6 +2,36 @@
 
 export type UserRole = 'customer' | 'chef' | 'delivery' | 'admin';
 
+export type DietType = 'vegetarian' | 'non-vegetarian' | 'vegan' | 'keto' | 'gluten-free';
+export type HealthGoal = 'weight-loss' | 'muscle-gain' | 'maintenance' | 'energy' | 'balanced';
+
+export interface UserPreferences {
+  dietType: DietType;
+  healthGoal: HealthGoal;
+  allergies: string[];
+  dislikedFoods: string[];
+  mealHistory: string[];
+}
+
+export interface MealRecommendation {
+  breakfast: {
+    mealId: string;
+    mealName: string;
+    reason: string;
+  };
+  lunch: {
+    mealId: string;
+    mealName: string;
+    reason: string;
+  };
+  dinner: {
+    mealId: string;
+    mealName: string;
+    reason: string;
+  };
+  shortReason: string;
+}
+
 export interface User {
   id: string;
   email: string;
