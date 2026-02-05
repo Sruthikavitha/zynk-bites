@@ -21,6 +21,53 @@ const emptyAddress: Address = {
   zipCode: '',
 };
 
+const AddressForm = ({ 
+  address, 
+  setAddress, 
+  title, 
+  icon: Icon 
+}: { 
+  address: Address; 
+  setAddress: (a: Address) => void; 
+  title: string; 
+  icon: typeof Home;
+}) => {
+  return (
+    <div className="space-y-3 p-4 rounded-xl bg-secondary/50">
+      <div className="flex items-center gap-2 text-sm font-medium">
+        <Icon className="w-4 h-4 text-primary" />
+        {title}
+      </div>
+      <Input
+        placeholder="Street address"
+        value={address.street}
+        onChange={(e) => setAddress({ ...address, street: e.target.value })}
+        type="text"
+      />
+      <div className="grid grid-cols-2 gap-2">
+        <Input
+          placeholder="City"
+          value={address.city}
+          onChange={(e) => setAddress({ ...address, city: e.target.value })}
+          type="text"
+        />
+        <Input
+          placeholder="State"
+          value={address.state}
+          onChange={(e) => setAddress({ ...address, state: e.target.value })}
+          type="text"
+        />
+      </div>
+      <Input
+        placeholder="ZIP Code"
+        value={address.zipCode}
+        onChange={(e) => setAddress({ ...address, zipCode: e.target.value })}
+        type="text"
+      />
+    </div>
+  );
+};
+
 export const Register = () => {
   const [type, setType] = useState<RegistrationType>('customer');
   const [step, setStep] = useState<RegistrationStep>('basic');
@@ -115,47 +162,6 @@ export const Register = () => {
       setDeliverySlots([...deliverySlots, slot]);
     }
   };
-
-  const AddressForm = ({ 
-    address, 
-    setAddress, 
-    title, 
-    icon: Icon 
-  }: { 
-    address: Address; 
-    setAddress: (a: Address) => void; 
-    title: string; 
-    icon: typeof Home;
-  }) => (
-    <div className="space-y-3 p-4 rounded-xl bg-secondary/50">
-      <div className="flex items-center gap-2 text-sm font-medium">
-        <Icon className="w-4 h-4 text-primary" />
-        {title}
-      </div>
-      <Input
-        placeholder="Street address"
-        value={address.street}
-        onChange={(e) => setAddress({ ...address, street: e.target.value })}
-      />
-      <div className="grid grid-cols-2 gap-2">
-        <Input
-          placeholder="City"
-          value={address.city}
-          onChange={(e) => setAddress({ ...address, city: e.target.value })}
-        />
-        <Input
-          placeholder="State"
-          value={address.state}
-          onChange={(e) => setAddress({ ...address, state: e.target.value })}
-        />
-      </div>
-      <Input
-        placeholder="ZIP Code"
-        value={address.zipCode}
-        onChange={(e) => setAddress({ ...address, zipCode: e.target.value })}
-      />
-    </div>
-  );
 
   return (
     <Layout>
@@ -333,23 +339,27 @@ export const Register = () => {
                     placeholder="Street address"
                     value={kitchenLocation.street}
                     onChange={(e) => setKitchenLocation({ ...kitchenLocation, street: e.target.value })}
+                    type="text"
                   />
                   <div className="grid grid-cols-2 gap-2">
                     <Input
                       placeholder="City"
                       value={kitchenLocation.city}
                       onChange={(e) => setKitchenLocation({ ...kitchenLocation, city: e.target.value })}
+                      type="text"
                     />
                     <Input
                       placeholder="State"
                       value={kitchenLocation.state}
                       onChange={(e) => setKitchenLocation({ ...kitchenLocation, state: e.target.value })}
+                      type="text"
                     />
                   </div>
                   <Input
                     placeholder="ZIP Code"
                     value={kitchenLocation.zipCode}
                     onChange={(e) => setKitchenLocation({ ...kitchenLocation, zipCode: e.target.value })}
+                    type="text"
                   />
                 </div>
 
