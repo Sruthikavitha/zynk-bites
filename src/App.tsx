@@ -11,6 +11,8 @@ import { Dashboard } from "./pages/Dashboard";
 import ChefDiscovery from "./pages/ChefDiscovery";
 import ChefDetail from "./pages/ChefDetail";
 import Subscribe from "./pages/Subscribe";
+import MealRecommendations from "./pages/MealRecommendations";
+import WeeklyMenu from "./pages/WeeklyMenu";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +32,8 @@ const App = () => (
             <Route path="/chefs" element={<ChefDiscovery />} />
             <Route path="/chef/:chefId" element={<ChefDetail />} />
             <Route path="/subscribe" element={<Subscribe />} />
+            <Route path="/meal-recommendations" element={<MealRecommendations />} />
+            <Route path="/weekly-menu" element={<WeeklyMenu />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

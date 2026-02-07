@@ -1,13 +1,13 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { 
-  UtensilsCrossed, 
-  LogOut, 
-  User, 
-  ChefHat, 
-  Truck, 
-  ShieldCheck 
+import {
+  UtensilsCrossed,
+  LogOut,
+  User,
+  ChefHat,
+  Truck,
+  ShieldCheck
 } from 'lucide-react';
 
 const roleIcons = {
@@ -41,6 +41,9 @@ export const Header = () => {
         </Link>
 
         <nav className="flex items-center gap-3">
+          <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex">
+            <Link to="/weekly-menu">Weekly Menu</Link>
+          </Button>
           {isAuthenticated && user ? (
             <>
               <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-secondary/80 border border-border/50">
@@ -52,9 +55,9 @@ export const Header = () => {
                   <p className="text-xs text-muted-foreground capitalize">{user.role === 'customer' ? 'Member' : user.role}</p>
                 </div>
               </div>
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={logout}
                 className="text-muted-foreground hover:text-destructive rounded-full"
               >

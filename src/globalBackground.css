@@ -1,0 +1,63 @@
+/* Wrapper for weekly page */
+.weekly-bg-wrapper {
+    position: relative;
+    padding: 40px;
+    border-radius: 20px;
+    overflow: hidden;
+    min-height: 100vh;
+    /* Added to ensure full height */
+    background-color: #f8f9fa;
+    /* Fallback/base color */
+}
+
+/* Food animation background */
+.food-animated-bg {
+    position: absolute;
+    inset: 0;
+    background-color: #fffaf3;
+    z-index: 0;
+}
+
+/* Floating food emojis (subtle) */
+.food-animated-bg::before,
+.food-animated-bg::after {
+    content: "🍕 🍔 🍛 🥗 🍜 🍎";
+    position: absolute;
+    font-size: 2.5rem;
+    opacity: 0.08;
+    white-space: nowrap;
+    animation: foodFloat 50s linear infinite;
+}
+
+/* Different layers */
+.food-animated-bg::before {
+    top: 30%;
+    left: -40%;
+}
+
+.food-animated-bg::after {
+    top: 65%;
+    left: -50%;
+    animation-duration: 65s;
+}
+
+@keyframes foodFloat {
+    from {
+        transform: translateX(0);
+    }
+
+    to {
+        transform: translateX(160vw);
+    }
+}
+
+.weekly-content {
+    position: relative;
+    z-index: 1;
+}
+
+@media (max-width: 1023px) {
+    .food-animated-bg {
+        display: none;
+    }
+}

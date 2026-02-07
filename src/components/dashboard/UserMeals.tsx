@@ -1,55 +1,29 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-
-const weeklyMeals = [
-  {
-    date: '2026-02-10',
-    day: 'Tue',
-    mealType: 'Lunch',
-    dish: 'Chicken Biryani',
-    image: 'https://foodish-api.herokuapp.com/api/images/biryani'
-  },
-  {
-    date: '2026-02-10',
-    day: 'Tue',
-    mealType: 'Dinner',
-    dish: 'Butter Chicken with Naan',
-    image: 'https://foodish-api.herokuapp.com/api/images/butter%20chicken'
-  },
-  {
-    date: '2026-02-11',
-    day: 'Wed',
-    mealType: 'Lunch',
-    dish: 'Thai Green Curry',
-    image: 'https://foodish-api.herokuapp.com/api/images/curry'
-  },
-  {
-    date: '2026-02-11',
-    day: 'Wed',
-    mealType: 'Dinner',
-    dish: 'Grilled Chicken',
-    image: 'https://foodish-api.herokuapp.com/api/images/grilled%20chicken'
-  },
-  {
-    date: '2026-02-12',
-    day: 'Thu',
-    mealType: 'Lunch',
-    dish: 'Veg Biryani',
-    image: 'https://foodish-api.herokuapp.com/api/images/biryani'
-  },
-  {
-    date: '2026-02-12',
-    day: 'Thu',
-    mealType: 'Dinner',
-    dish: 'Paneer Butter Masala',
-    image: 'https://foodish-api.herokuapp.com/api/images/paneer'
-  }
-];
+import { weeklyMenu, getFoodImage } from '@/data/weeklyMenuData';
+import { format, parseISO } from 'date-fns';
 
 export const UserMeals = () => {
   const [selectedDay, setSelectedDay] = useState('Tue');
 
-  const mealsForDay = weeklyMeals.filter((meal) => meal.day === selectedDay);
+  const mealsForDay = weeklyMenu
+    .filter((day) => format(parseISO(day.date), 'EEE') === selectedDay)
+    .flatMap((day) => [
+      {
+        date: day.date,
+        day: format(parseISO(day.date), 'EEE'),
+        mealType: 'Lunch',
+        dish: day.lunch,
+        image: getFoodImage(day.lunch)
+      },
+      {
+        date: day.date,
+        day: format(parseISO(day.date), 'EEE'),
+        mealType: 'Dinner',
+        dish: day.dinner,
+        image: getFoodImage(day.dinner)
+      }
+    ]);
 
   return (
     <Card className="shadow-card">
