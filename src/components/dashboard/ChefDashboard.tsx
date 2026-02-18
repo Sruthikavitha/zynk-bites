@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import * as api from '@/services/api';
+import { backendApi } from '@/services/backendApi';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ export const ChefDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showAddDish, setShowAddDish] = useState(false);
   const [canModify] = useState(!api.canModifyMeal());
+  const [menuFile, setMenuFile] = useState<File | null>(null);
 
   // New dish form
   const [dishName, setDishName] = useState('');
@@ -39,7 +41,7 @@ export const ChefDashboard = () => {
   const loadData = () => {
     if (!user) return;
     setLoading(true);
-    
+
     const ordersResponse = api.getChefOrders(user.id);
     if (ordersResponse.success) {
       setOrders(ordersResponse.data || []);
@@ -49,8 +51,23 @@ export const ChefDashboard = () => {
     if (dishesResponse.success) {
       setDishes(dishesResponse.data || []);
     }
-    
+
     setLoading(false);
+  };
+
+  const handleMenuUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !menuFile) return;
+
+    try {
+      const weekStart = new Date().toISOString().split('T')[0]; // Current date as proxy for week start
+      await backendApi.uploadMenuCard(user.id, menuFile, weekStart);
+      toast({ title: 'Menu Uploaded', description: 'Your menu card has been updated.' });
+      setMenuFile(null);
+    } catch (error) {
+      console.error(error);
+      toast({ title: 'Upload Failed', description: 'Could not upload menu card.', variant: 'destructive' });
+    }
   };
 
   const handleAddDish = (e: React.FormEvent) => {
@@ -226,6 +243,26 @@ export const ChefDashboard = () => {
           </div>
         </div>
 
+        {/* Menu Upload Card */}
+        <Card className="mb-6 shadow-soft bg-secondary/20">
+          <CardHeader>
+            <CardTitle className="font-display flex items-center gap-2">
+              <UtensilsCrossed className="w-5 h-5 text-primary" />
+              Weekly Menu Card
+            </CardTitle>
+            <CardDescription>Upload your menu brochure for customers</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleMenuUpload} className="flex gap-4 items-end">
+              <div className="grid w-full max-w-sm items-center gap-1.5">
+                <Label htmlFor="menu-upload">Menu Image</Label>
+                <Input id="menu-upload" type="file" accept="image/*" onChange={(e) => setMenuFile(e.target.files?.[0] || null)} />
+              </div>
+              <Button type="submit" disabled={!menuFile} className="gradient-primary">Upload</Button>
+            </form>
+          </CardContent>
+        </Card>
+
         {/* Finalization Banner */}
         <div className={`mb-6 p-4 rounded-2xl flex items-center gap-3 ${canModify ? 'bg-primary/5 border border-primary/20' : 'bg-muted/80 border border-border/50'}`}>
           <Clock className={`w-5 h-5 ${canModify ? 'text-primary' : 'text-muted-foreground'}`} />
@@ -292,7 +329,7 @@ export const ChefDashboard = () => {
                         {order.status === 'pending' ? 'Waiting' : order.status === 'preparing' ? 'Cooking' : 'Ready'}
                       </Badge>
                     </div>
-                    
+
                     {order.selectedCustomizations && order.selectedCustomizations.length > 0 && (
                       <div className="mb-3 p-2 rounded-lg bg-primary/5">
                         <p className="text-xs font-medium text-primary mb-1">Customizations:</p>

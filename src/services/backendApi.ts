@@ -58,6 +58,16 @@ export const backendApi = {
         return data;
     },
 
+    // Get Customer Orders
+    getCustomerOrders: async (customerId: string) => {
+        // Assuming backend supports filtering by customerId via query or infers from token
+        const response = await fetch(`${API_URL}/orders?customerId=${customerId}`, {
+            headers: getHeaders()
+        });
+        if (!response.ok) throw new Error('Failed to fetch orders');
+        return response.json();
+    },
+
     // Chef: Upload Menu Card
     uploadMenuCard: async (chefId: string, file: File, weekStart: string) => {
         const formData = new FormData();

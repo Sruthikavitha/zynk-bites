@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import * as api from '@/services/api';
+import { backendApi } from '@/services/backendApi';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { 
+import {
   Calendar, MapPin, Clock, UtensilsCrossed, SkipForward, RefreshCw,
   AlertCircle, CheckCircle2, Lock, Home, Briefcase, ChefHat, Star,
   Undo2, Settings, Package
@@ -117,9 +118,9 @@ export const CustomerDashboard = () => {
     return () => clearInterval(interval);
   }, [user]);
 
-  const loadData = () => {
+  const loadData = async () => {
     if (!user) return;
-    
+
     const subResponse = api.getSubscription(user.id);
     if (subResponse.success) setSubscription(subResponse.data || null);
 
@@ -132,8 +133,17 @@ export const CustomerDashboard = () => {
     const dishesResponse = api.getAllDishes();
     if (dishesResponse.success) setAllDishes(dishesResponse.data || []);
 
-    const chefsResponse = api.getApprovedChefs();
-    if (chefsResponse.success) setAvailableChefs(chefsResponse.data || []);
+    // Fetch real chefs from backend
+    try {
+      const pincode = (user as Customer).homeAddress?.zipCode || '560001';
+      const chefs = await backendApi.getAvailableChefs(pincode);
+      setAvailableChefs(chefs);
+    } catch (err) {
+      console.error("Failed to fetch chefs", err);
+      // Fallback to mock if API fails
+      const chefsResponse = api.getApprovedChefs();
+      if (chefsResponse.success) setAvailableChefs(chefsResponse.data || []);
+    }
 
     const chefResponse = api.getSelectedChef(user.id);
     if (chefResponse.success) setSelectedChef(chefResponse.data || null);
@@ -359,13 +369,13 @@ export const CustomerDashboard = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="street">Delivery Address</Label>
-                  <Input id="street" value={address.street} onChange={(e) => setAddress({...address, street: e.target.value})} placeholder="Street address" required />
+                  <Input id="street" value={address.street} onChange={(e) => setAddress({ ...address, street: e.target.value })} placeholder="Street address" required />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <Input value={address.city} onChange={(e) => setAddress({...address, city: e.target.value})} placeholder="City" required />
-                  <Input value={address.state} onChange={(e) => setAddress({...address, state: e.target.value})} placeholder="State" required />
+                  <Input value={address.city} onChange={(e) => setAddress({ ...address, city: e.target.value })} placeholder="City" required />
+                  <Input value={address.state} onChange={(e) => setAddress({ ...address, state: e.target.value })} placeholder="State" required />
                 </div>
-                <Input value={address.zipCode} onChange={(e) => setAddress({...address, zipCode: e.target.value})} placeholder="ZIP Code" required />
+                <Input value={address.zipCode} onChange={(e) => setAddress({ ...address, zipCode: e.target.value })} placeholder="ZIP Code" required />
 
                 <div className="flex gap-3">
                   <Button type="button" variant="outline" onClick={() => setShowSubscribe(false)} className="flex-1">Back</Button>
@@ -493,7 +503,7 @@ export const CustomerDashboard = () => {
                 </div>
                 {canModify && (
                   <div className="flex gap-2">
-                    <Button size="sm" variant={subscription?.activeAddressType === 'home' ? 'default' : 'outline'} 
+                    <Button size="sm" variant={subscription?.activeAddressType === 'home' ? 'default' : 'outline'}
                       className="rounded-full"
                       onClick={() => handleSwitchAddress('home')} disabled={!customer?.homeAddress}>
                       <Home className="w-4 h-4 mr-1" /> Home
@@ -577,11 +587,7 @@ export const CustomerDashboard = () => {
         </Card>
 
         {/* Weekly Meals */}
-        <UserMeals />
-
-        {/* Dishes Chart removed */}
-
-        {/* Meal Skip Decision Assistant removed */}
+        <UserMeals dailyMeals={dailyMeals} allMeals={allMeals} allDishes={allDishes} />
 
       </div>
     </div>
