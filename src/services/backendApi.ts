@@ -12,7 +12,51 @@ const getHeaders = () => {
 };
 
 export const backendApi = {
-    // Auth - mostly handled by existing auth flow, but adding for completeness if needed
+    // Auth
+    login: async (email: string, password: string) => {
+        const response = await fetch(`${API_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Login failed');
+        // Store token
+        if (data.token) localStorage.setItem('token', data.token);
+        return { success: true, data: data.user };
+    },
+
+    registerCustomer: async (email: string, password: string, name: string, phone: string, homeAddress?: any, workAddress?: any) => {
+        const response = await fetch(`${API_URL}/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email, password, name, phone, role: 'customer',
+                homeAddress, workAddress
+            })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Registration failed');
+        if (data.token) localStorage.setItem('token', data.token);
+        const user = { ...data.user, name: data.user.fullName || data.user.name };
+        return { success: true, data: user };
+    },
+
+    registerChef: async (email: string, password: string, name: string, specialty: string, bio: string, kitchenLocation: any, serviceArea: string, deliverySlots: string[]) => {
+        const response = await fetch(`${API_URL}/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email, password, name, role: 'chef',
+                specialty, bio, kitchenLocation, serviceArea, deliverySlots
+            })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Registration failed');
+        if (data.token) localStorage.setItem('token', data.token);
+        const user = { ...data.user, name: data.user.fullName || data.user.name };
+        return { success: true, data: user };
+    },
 
     // Chef Discovery
     getAvailableChefs: async (pincode: string): Promise<Chef[]> => {
