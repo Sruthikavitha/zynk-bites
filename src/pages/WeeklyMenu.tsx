@@ -4,6 +4,8 @@ import { NavLink } from "@/components/NavLink";
 import { format, parseISO } from "date-fns";
 
 const WeeklyMenu = () => {
+    console.log("Weekly Menu Data:", weeklyMenu);
+    console.log("Image for Chicken Biryani:", getFoodImage("Chicken Biryani"));
     return (
         <div className="weekly-bg-wrapper">
             <div className="food-animated-bg"></div>
