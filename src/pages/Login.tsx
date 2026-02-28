@@ -29,7 +29,14 @@ export const Login = () => {
       if (response.success && response.data) {
         login(response.data);
         toast({ title: 'Welcome back!', description: `Logged in as ${response.data.name}` });
-        navigate('/dashboard');
+        // Role-based redirect
+        const roleRoutes: Record<string, string> = {
+          customer: '/customer/home',
+          chef: '/chef/dashboard',
+          delivery: '/delivery/dashboard',
+          admin: '/admin/dashboard',
+        };
+        navigate(roleRoutes[response.data.role] || '/dashboard');
       } else {
         toast({ title: 'Login Failed', description: response.error, variant: 'destructive' });
       }
