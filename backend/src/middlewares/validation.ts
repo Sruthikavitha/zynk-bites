@@ -9,6 +9,7 @@ export const customerRegisterSchema = z.object({
   email: z.string().trim().email('Invalid email format').max(255),
   phone: z.string().trim().min(10, 'Phone must be at least 10 digits').max(20),
   password: z.string().min(6, 'Password must be at least 6 characters').max(100),
+  role: z.enum(['customer', 'chef']).optional().default('customer'),
 });
 
 // OTP verification (Step 2)

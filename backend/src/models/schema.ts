@@ -1,16 +1,12 @@
-import { pgTable, text, varchar, timestamp, integer, boolean, serial, pgEnum, index, unique, real } from 'drizzle-orm/pg-core';
+import { pgTable, text, varchar, timestamp, integer, boolean, serial, pgEnum, index, unique, real, jsonb } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
-// Enum for user roles
 export const userRoleEnum = pgEnum('user_role', ['customer', 'chef', 'delivery', 'admin']);
-
-// Enum for subscription status
-export const subscriptionStatusEnum = pgEnum('subscription_status', ['active', 'paused', 'cancelled']);
-
-// Enum for user account status
+export const subscriptionStatusEnum = pgEnum('subscription_status', ['pending', 'active', 'paused', 'cancelled']);
 export const userStatusEnum = pgEnum('user_status', ['pending', 'active', 'suspended']);
+export const chefVerificationStatusEnum = pgEnum('chef_verification_status', ['pending', 'approved', 'rejected']);
+export const deliveryStatusEnum = pgEnum('delivery_status', ['scheduled', 'skipped', 'delivered']);
 
-// Users table
 export const users = pgTable(
   'users',
   {
@@ -36,7 +32,6 @@ export const users = pgTable(
   })
 );
 
-// Customer profiles table (separate from users)
 export const customerProfiles = pgTable(
   'customer_profiles',
   {
@@ -56,20 +51,58 @@ export const customerProfiles = pgTable(
   })
 );
 
-// Subscriptions table
+export const chefProfiles = pgTable(
+  'chef_profiles',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id').notNull().unique(),
+    kitchenName: varchar('kitchen_name', { length: 255 }).notNull(),
+    fssaiNumber: varchar('fssai_number', { length: 50 }).notNull(),
+    serviceZones: text('service_zones').notNull(),
+    dailyCapacity: integer('daily_capacity').notNull(),
+    bankDetails: text('bank_details').notNull(),
+    verificationStatus: chefVerificationStatusEnum('verification_status').default('pending').notNull(),
+    rating: real('rating').default(0).notNull(),
+    deliveryWindow: varchar('delivery_window', { length: 100 }).default('12:00 PM - 2:00 PM').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    chefUserIdx: index('chef_user_idx').on(table.userId),
+  })
+);
+
+export const mealPlans = pgTable('meal_plans', {
+  id: serial('id').primaryKey(),
+  chefId: integer('chef_id').notNull(),
+  planName: varchar('plan_name', { length: 100 }).notNull(),
+  monthlyPrice: integer('monthly_price').notNull(),
+  frequency: varchar('frequency', { length: 50 }).notNull(),
+  mealType: varchar('meal_type', { length: 50 }).notNull(),
+  availability: boolean('availability').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 export const subscriptions = pgTable(
   'subscriptions',
   {
     id: serial('id').primaryKey(),
     userId: integer('user_id').notNull(),
+    chefId: integer('chef_id'),
+    planId: integer('plan_id'),
     planName: varchar('plan_name', { length: 100 }).notNull(),
     mealsPerWeek: integer('meals_per_week').notNull(),
     priceInCents: integer('price_in_cents').notNull(),
+    priceSnapshot: integer('price_snapshot'),
     deliveryAddress: text('delivery_address').notNull(),
     postalCode: varchar('postal_code', { length: 20 }).notNull(),
     city: varchar('city', { length: 100 }).notNull(),
-    status: subscriptionStatusEnum('status').default('active').notNull(),
+    status: subscriptionStatusEnum('status').default('pending').notNull(),
+    startDate: timestamp('start_date'),
     nextBillingDate: timestamp('next_billing_date').notNull(),
+    paymentOrderId: varchar('payment_order_id', { length: 150 }),
+    paymentId: varchar('payment_id', { length: 150 }),
     lastModifiedAt: timestamp('last_modified_at').defaultNow().notNull(),
     isSkipSwapLocked: boolean('is_skip_swap_locked').default(false).notNull(),
     lockAppliedAt: timestamp('lock_applied_at'),
@@ -82,7 +115,31 @@ export const subscriptions = pgTable(
   })
 );
 
-// Relations
+export const deliveries = pgTable('deliveries', {
+  id: serial('id').primaryKey(),
+  subscriptionId: integer('subscription_id').notNull(),
+  chefId: integer('chef_id').notNull(),
+  customerId: integer('customer_id').notNull(),
+  deliveryDate: timestamp('delivery_date').notNull(),
+  addressSnapshot: text('address_snapshot').notNull(),
+  mealType: varchar('meal_type', { length: 50 }).notNull(),
+  status: deliveryStatusEnum('status').default('scheduled').notNull(),
+  deliveredAt: timestamp('delivered_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const notifications = pgTable('notifications', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull(),
+  type: varchar('type', { length: 50 }).notNull(),
+  title: varchar('title', { length: 150 }).notNull(),
+  message: text('message').notNull(),
+  read: boolean('read').default(false).notNull(),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 export const userRelations = relations(users, ({ many, one }) => ({
   subscriptions: many(subscriptions),
   profile: one(customerProfiles, {
@@ -105,13 +162,20 @@ export const subscriptionRelations = relations(subscriptions, ({ one }) => ({
   }),
 }));
 
-// TypeScript types
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type CustomerProfile = typeof customerProfiles.$inferSelect;
 export type NewCustomerProfile = typeof customerProfiles.$inferInsert;
+export type ChefProfile = typeof chefProfiles.$inferSelect;
+export type NewChefProfile = typeof chefProfiles.$inferInsert;
+export type MealPlan = typeof mealPlans.$inferSelect;
+export type NewMealPlan = typeof mealPlans.$inferInsert;
 export type Subscription = typeof subscriptions.$inferSelect;
 export type NewSubscription = typeof subscriptions.$inferInsert;
+export type Delivery = typeof deliveries.$inferSelect;
+export type NewDelivery = typeof deliveries.$inferInsert;
+export type Notification = typeof notifications.$inferSelect;
+export type NewNotification = typeof notifications.$inferInsert;
 export type UserRole = 'customer' | 'chef' | 'delivery' | 'admin';
-export type SubscriptionStatus = 'active' | 'paused' | 'cancelled';
+export type SubscriptionStatus = 'pending' | 'active' | 'paused' | 'cancelled';
 export type UserStatus = 'pending' | 'active' | 'suspended';
