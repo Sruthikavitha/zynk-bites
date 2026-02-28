@@ -27,7 +27,7 @@ router.use(authenticate);
 router.use(isCustomer);
 
 // Create a new subscription with validation
-router.post('/', validateRequest(createSubscriptionSchema), createNewSubscription);
+router.post('/legacy', validateRequest(createSubscriptionSchema), createNewSubscription);
 
 // Get all user subscriptions
 router.get('/', getSubscriptions);
