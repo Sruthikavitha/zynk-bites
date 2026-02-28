@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import * as api from '@/services/api';
 import { backendApi } from '@/services/backendApi';
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { ChefHat, Clock, MapPin, UtensilsCrossed, AlertTriangle, Plus, Leaf, Drumstick, Flame, Dumbbell } from 'lucide-react';
+import { ChefHat, Clock, MapPin, UtensilsCrossed, AlertTriangle, Plus, Leaf, Drumstick, Flame, Dumbbell, Upload, FileText, CheckCircle2 } from 'lucide-react';
 import type { Order, Chef, Dish, NutritionalInfo, CustomizationOption } from '@/types';
 
 export const ChefDashboard = () => {
@@ -20,6 +20,12 @@ export const ChefDashboard = () => {
   const [showAddDish, setShowAddDish] = useState(false);
   const [canModify] = useState(!api.canModifyMeal());
   const [menuFile, setMenuFile] = useState<File | null>(null);
+
+  // Menu card upload
+  const [menuFile, setMenuFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // New dish form
   const [dishName, setDishName] = useState('');
@@ -118,6 +124,22 @@ export const ChefDashboard = () => {
     if (newOption.trim()) {
       setCustomOptions([...customOptions, newOption.trim()]);
       setNewOption('');
+    }
+  };
+
+  const handleMenuUpload = async () => {
+    if (!menuFile || !user) return;
+    setUploading(true);
+    try {
+      const weekStart = new Date().toISOString().split('T')[0];
+      const result = await backendApi.uploadMenuCard(user.id, menuFile, weekStart);
+      setUploadedUrl(result.menuCardUrl || null);
+      toast({ title: 'Menu Uploaded!', description: 'Your weekly menu card is now live for customers.' });
+      setMenuFile(null);
+    } catch (err: any) {
+      toast({ title: 'Upload Failed', description: err.message || 'Something went wrong.', variant: 'destructive' });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -362,6 +384,52 @@ export const ChefDashboard = () => {
                     )}
                   </div>
                 ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Menu Card Upload */}
+        <Card className="shadow-soft mb-6 border-primary/10">
+          <CardHeader>
+            <CardTitle className="font-display flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              Weekly Menu Card
+            </CardTitle>
+            <CardDescription>Upload a PDF or image of your weekly menu for customers to preview</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {uploadedUrl ? (
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20">
+                <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-primary">Menu card uploaded successfully</p>
+                  <a href={uploadedUrl} target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-muted-foreground hover:underline truncate block">View menu card →</a>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => setUploadedUrl(null)}>Replace</Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-border/60 rounded-xl p-8 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all">
+                  <Upload className="w-8 h-8 mx-auto mb-3 text-muted-foreground" />
+                  <p className="font-medium text-sm">{menuFile ? menuFile.name : 'Click to upload menu card'}</p>
+                  <p className="text-xs text-muted-foreground mt-1">PDF, JPG, or PNG up to 5MB</p>
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => setMenuFile(e.target.files?.[0] || null)}
+                />
+                {menuFile && (
+                  <Button onClick={handleMenuUpload} disabled={uploading} className="w-full gradient-primary">
+                    {uploading ? 'Uploading...' : 'Upload Menu Card'}
+                  </Button>
+                )}
               </div>
             )}
           </CardContent>

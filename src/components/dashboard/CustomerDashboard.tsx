@@ -133,14 +133,12 @@ export const CustomerDashboard = () => {
     const dishesResponse = api.getAllDishes();
     if (dishesResponse.success) setAllDishes(dishesResponse.data || []);
 
-    // Fetch real chefs from backend
+    // Try real backend first; fall back to mock data if backend is offline
     try {
       const pincode = (user as Customer).homeAddress?.zipCode || '560001';
       const chefs = await backendApi.getAvailableChefs(pincode);
       setAvailableChefs(chefs);
-    } catch (err) {
-      console.error("Failed to fetch chefs", err);
-      // Fallback to mock if API fails
+    } catch {
       const chefsResponse = api.getApprovedChefs();
       if (chefsResponse.success) setAvailableChefs(chefsResponse.data || []);
     }
@@ -587,7 +585,11 @@ export const CustomerDashboard = () => {
         </Card>
 
         {/* Weekly Meals */}
-        <UserMeals dailyMeals={dailyMeals} allMeals={allMeals} allDishes={allDishes} />
+        <UserMeals />
+
+        {/* Dishes Chart removed */}
+
+        {/* Meal Skip Decision Assistant removed */}
 
       </div>
     </div>
