@@ -13,6 +13,7 @@ import ChefDetail from "./pages/ChefDetail";
 import Subscribe from "./pages/Subscribe";
 import MealRecommendations from "./pages/MealRecommendations";
 import WeeklyMenu from "./pages/WeeklyMenu";
+import CustomerOnboarding from "./pages/CustomerOnboarding";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/register" element={<Register />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/customer/home" element={<CustomerHome />} />
+            <Route path="/customer/onboarding" element={<CustomerOnboarding />} />
             <Route path="/chef/dashboard" element={<ChefDashboardPage />} />
             <Route path="/delivery/dashboard" element={<DeliveryDashboardPage />} />
             <Route path="/admin/dashboard" element={<AdminDashboardPage />} />

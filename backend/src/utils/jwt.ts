@@ -1,38 +1,42 @@
 import jwt from 'jsonwebtoken';
 
-// Interface for JWT payload structure
 export interface JwtPayload {
   userId: number;
   email: string;
   role: 'customer' | 'chef' | 'delivery' | 'admin';
 }
 
-// Sign a new JWT token with user data
+// Short-lived access token (15 minutes)
 export const signToken = (payload: JwtPayload): string => {
   const secret = process.env.JWT_SECRET || 'your_secret_key';
-  const expiresIn = process.env.JWT_EXPIRES_IN || '7d';
-
-  // Create JWT with user payload
+  const expiresIn = process.env.JWT_EXPIRES_IN || '15m';
   return jwt.sign(payload, secret, { expiresIn } as jwt.SignOptions);
 };
 
-// Verify JWT token and return decoded payload
+// Long-lived refresh token (7 days)
+export const signRefreshToken = (payload: JwtPayload): string => {
+  const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || 'your_refresh_secret_key';
+  return jwt.sign(payload, secret, { expiresIn: '7d' } as jwt.SignOptions);
+};
+
+// Verify access token
 export const verifyToken = (token: string): JwtPayload => {
   const secret = process.env.JWT_SECRET || 'your_secret_key';
-
-  // Verify token signature and expiration
   return jwt.verify(token, secret) as JwtPayload;
 };
 
-// Extract token from Authorization header (Bearer schema)
+// Verify refresh token
+export const verifyRefreshToken = (token: string): JwtPayload => {
+  const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || 'your_refresh_secret_key';
+  return jwt.verify(token, secret) as JwtPayload;
+};
+
+// Extract token from Authorization header
 export const extractToken = (authHeader?: string): string | null => {
   if (!authHeader) return null;
-
-  // Format: "Bearer <token>"
   const parts = authHeader.split(' ');
   if (parts.length === 2 && parts[0] === 'Bearer') {
     return parts[1];
   }
-
   return null;
 };
