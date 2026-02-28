@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { backendApi as api } from '@/services/backendApi';
+import * as api from '@/services/api';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,15 +21,15 @@ const emptyAddress: Address = {
   zipCode: '',
 };
 
-const AddressForm = ({
-  address,
-  setAddress,
-  title,
-  icon: Icon
-}: {
-  address: Address;
-  setAddress: (a: Address) => void;
-  title: string;
+const AddressForm = ({ 
+  address, 
+  setAddress, 
+  title, 
+  icon: Icon 
+}: { 
+  address: Address; 
+  setAddress: (a: Address) => void; 
+  title: string; 
   icon: typeof Home;
 }) => {
   return (
@@ -71,25 +71,25 @@ const AddressForm = ({
 export const Register = () => {
   const [type, setType] = useState<RegistrationType>('customer');
   const [step, setStep] = useState<RegistrationStep>('basic');
-
+  
   // Basic info
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-
+  
   // Customer addresses
   const [homeAddress, setHomeAddress] = useState<Address>({ ...emptyAddress });
   const [workAddress, setWorkAddress] = useState<Address>({ ...emptyAddress });
-
+  
   // Chef info
   const [specialty, setSpecialty] = useState('');
   const [bio, setBio] = useState('');
   const [kitchenLocation, setKitchenLocation] = useState<Address>({ ...emptyAddress });
   const [serviceArea, setServiceArea] = useState('');
   const [deliverySlots, setDeliverySlots] = useState<string[]>(['lunch', 'dinner']);
-
+  
   const [isLoading, setIsLoading] = useState(false);
 
   const { login } = useAuth();
@@ -111,11 +111,11 @@ export const Register = () => {
 
     try {
       if (type === 'customer') {
-        const response = await api.registerCustomer(
-          email,
-          password,
-          name,
-          phone,
+        const response = api.registerCustomer(
+          email, 
+          password, 
+          name, 
+          phone, 
           homeAddress.street ? homeAddress : undefined,
           workAddress.street ? workAddress : undefined
         );
@@ -123,12 +123,14 @@ export const Register = () => {
           login(response.data);
           toast({ title: 'Welcome to ZYNK!', description: 'Your account has been created.' });
           navigate('/dashboard');
+        } else {
+          toast({ title: 'Error', description: response.error, variant: 'destructive' });
         }
       } else {
-        const response = await api.registerChef(
-          email,
-          password,
-          name,
+        const response = api.registerChef(
+          email, 
+          password, 
+          name, 
           specialty,
           bio,
           kitchenLocation.street ? kitchenLocation : undefined,
@@ -137,15 +139,15 @@ export const Register = () => {
         );
         if (response.success && response.data) {
           login(response.data);
-          toast({
-            title: 'Registration Complete!',
-            description: 'You can now add your dishes. Orders will appear once you\'re approved.'
+          toast({ 
+            title: 'Registration Complete!', 
+            description: 'You can now add your dishes. Orders will appear once you\'re approved.' 
           });
           navigate('/dashboard');
+        } else {
+          toast({ title: 'Error', description: response.error, variant: 'destructive' });
         }
       }
-    } catch (error: any) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -185,10 +187,11 @@ export const Register = () => {
                   <button
                     type="button"
                     onClick={() => setType('customer')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md text-sm font-medium transition-all ${type === 'customer'
-                      ? 'bg-card shadow-card text-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
-                      }`}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md text-sm font-medium transition-all ${
+                      type === 'customer' 
+                        ? 'bg-card shadow-card text-foreground' 
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
                   >
                     <User className="w-4 h-4" />
                     Customer
@@ -196,10 +199,11 @@ export const Register = () => {
                   <button
                     type="button"
                     onClick={() => setType('chef')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md text-sm font-medium transition-all ${type === 'chef'
-                      ? 'bg-card shadow-card text-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
-                      }`}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md text-sm font-medium transition-all ${
+                      type === 'chef' 
+                        ? 'bg-card shadow-card text-foreground' 
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
                   >
                     <ChefHat className="w-4 h-4" />
                     Chef Partner
@@ -284,18 +288,18 @@ export const Register = () => {
 
             {step === 'addresses' && (
               <form onSubmit={handleFinalSubmit} className="space-y-4">
-                <AddressForm
-                  address={homeAddress}
-                  setAddress={setHomeAddress}
-                  title="Home Address"
-                  icon={Home}
+                <AddressForm 
+                  address={homeAddress} 
+                  setAddress={setHomeAddress} 
+                  title="Home Address" 
+                  icon={Home} 
                 />
-
-                <AddressForm
-                  address={workAddress}
-                  setAddress={setWorkAddress}
-                  title="Work Address"
-                  icon={Briefcase}
+                
+                <AddressForm 
+                  address={workAddress} 
+                  setAddress={setWorkAddress} 
+                  title="Work Address" 
+                  icon={Briefcase} 
                 />
 
                 <p className="text-xs text-muted-foreground text-center">
@@ -377,10 +381,11 @@ export const Register = () => {
                         key={slot}
                         type="button"
                         onClick={() => toggleDeliverySlot(slot)}
-                        className={`flex-1 py-2 px-4 rounded-lg border text-sm font-medium capitalize transition-all ${deliverySlots.includes(slot)
-                          ? 'border-primary bg-primary text-primary-foreground'
-                          : 'border-border hover:border-primary'
-                          }`}
+                        className={`flex-1 py-2 px-4 rounded-lg border text-sm font-medium capitalize transition-all ${
+                          deliverySlots.includes(slot)
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : 'border-border hover:border-primary'
+                        }`}
                       >
                         {slot}
                       </button>

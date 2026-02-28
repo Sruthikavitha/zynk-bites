@@ -1,24 +1,24 @@
 import { useState, useEffect } from 'react';
-import { backendApi as api } from '@/services/backendApi';
-import { isBeforeCutoff } from '@/utils/dateUtils';
+import * as api from '@/services/api';
+import * as db from '@/services/db';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
 } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import {
-  ShieldCheck,
-  Users,
-  ChefHat,
-  Calendar,
+import { 
+  ShieldCheck, 
+  Users, 
+  ChefHat, 
+  Calendar, 
   TrendingUp,
   Check,
   X,
@@ -61,11 +61,11 @@ interface OperationsSummary {
 }
 
 const CutoffBanner = () => {
-  const [isLocked, setIsLocked] = useState(!isBeforeCutoff());
+  const [isLocked, setIsLocked] = useState(!db.isBeforeCutoff());
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setIsLocked(!isBeforeCutoff());
+      setIsLocked(!db.isBeforeCutoff());
     }, 1000);
     return () => clearInterval(interval);
   }, []);
@@ -93,14 +93,14 @@ const CutoffBanner = () => {
   );
 };
 
-const StatCard = ({
-  icon: Icon,
-  value,
-  label,
-  color = 'primary'
-}: {
-  icon: React.ElementType;
-  value: number;
+const StatCard = ({ 
+  icon: Icon, 
+  value, 
+  label, 
+  color = 'primary' 
+}: { 
+  icon: React.ElementType; 
+  value: number; 
   label: string;
   color?: string;
 }) => (
@@ -144,9 +144,7 @@ export const AdminDashboard = () => {
 
   const loadData = () => {
     setLoading(true);
-
-    // Legacy API calls commented out during migration
-    /*
+    
     const statsResponse = api.getEnhancedAdminOverview();
     if (statsResponse.success && statsResponse.data) {
       setStats(statsResponse.data);
@@ -171,13 +169,11 @@ export const AdminDashboard = () => {
     if (opsResponse.success && opsResponse.data) {
       setOperationsSummary(opsResponse.data);
     }
-    */
-
+    
     setLoading(false);
   };
 
   const handleApproveChef = (chefId: string) => {
-    /*
     const response = api.approveChef(chefId);
     if (response.success) {
       toast({ title: 'Chef Approved', description: 'The chef can now accept orders.' });
@@ -185,11 +181,9 @@ export const AdminDashboard = () => {
     } else {
       toast({ title: 'Error', description: response.error, variant: 'destructive' });
     }
-    */
   };
 
   const handleRejectChef = (chefId: string) => {
-    /*
     const response = api.rejectChef(chefId);
     if (response.success) {
       toast({ title: 'Chef Rejected', description: 'The application has been rejected.' });
@@ -197,11 +191,9 @@ export const AdminDashboard = () => {
     } else {
       toast({ title: 'Error', description: response.error, variant: 'destructive' });
     }
-    */
   };
 
   const handleToggleChef = (chef: Chef) => {
-    /*
     const response = chef.isDisabled 
       ? api.enableChef(chef.id) 
       : api.disableChef(chef.id);
@@ -217,11 +209,9 @@ export const AdminDashboard = () => {
     } else {
       toast({ title: 'Error', description: response.error, variant: 'destructive' });
     }
-    */
   };
 
   const handleToggleSubscription = (sub: Subscription) => {
-    /*
     const response = sub.status === 'paused' 
       ? api.resumeSubscription(sub.id) 
       : api.pauseSubscription(sub.id);
@@ -235,7 +225,6 @@ export const AdminDashboard = () => {
     } else {
       toast({ title: 'Error', description: response.error, variant: 'destructive' });
     }
-    */
   };
 
   const approvedChefsList = allChefs.filter(c => c.status === 'approved');
@@ -288,13 +277,13 @@ export const AdminDashboard = () => {
                 ) : pendingChefs.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <ChefHat className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p>No pending applications or backend not connected</p>
+                    <p>No pending applications</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {pendingChefs.map((chef) => (
-                      <div
-                        key={chef.id}
+                      <div 
+                        key={chef.id} 
                         className="flex items-center justify-between p-4 rounded-xl bg-secondary/50"
                       >
                         <div className="flex items-center gap-4">
@@ -320,15 +309,15 @@ export const AdminDashboard = () => {
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <Button
-                            size="sm"
+                          <Button 
+                            size="sm" 
                             variant="outline"
                             className="text-destructive border-destructive/50 hover:bg-destructive/10"
                             onClick={() => handleRejectChef(chef.id)}
                           >
                             <X className="w-4 h-4" />
                           </Button>
-                          <Button
+                          <Button 
                             size="sm"
                             className="gradient-accent"
                             onClick={() => handleApproveChef(chef.id)}

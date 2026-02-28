@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { backendApi as api } from '@/services/backendApi';
+import * as api from '@/services/api';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,16 +25,14 @@ export const Login = () => {
     setIsLoading(true);
 
     try {
-      const response = await api.login(email, password);
+      const response = api.login(email, password);
       if (response.success && response.data) {
         login(response.data);
         toast({ title: 'Welcome back!', description: `Logged in as ${response.data.name}` });
         navigate('/dashboard');
       } else {
-        toast({ title: 'Login Failed', description: 'Invalid credentials', variant: 'destructive' });
+        toast({ title: 'Login Failed', description: response.error, variant: 'destructive' });
       }
-    } catch (error: any) {
-      toast({ title: 'Login Failed', description: error.message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }

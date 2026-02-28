@@ -1,20 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { backendApi as api } from '@/services/backendApi';
-import { isBeforeCutoff } from '@/utils/dateUtils';
+import * as api from '@/services/api';
+import * as db from '@/services/db';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import {
-  Truck,
-  MapPin,
-  CheckCircle2,
-  Clock,
-  Package,
-  ChefHat,
-  Home,
+import { 
+  Truck, 
+  MapPin, 
+  CheckCircle2, 
+  Clock, 
+  Package, 
+  ChefHat, 
+  Home, 
   Building2,
   PackageCheck,
   Lock,
@@ -29,11 +29,11 @@ interface DeliveryOrder extends Order {
 }
 
 const CutoffBanner = () => {
-  const [isLocked, setIsLocked] = useState(!isBeforeCutoff());
+  const [isLocked, setIsLocked] = useState(!db.isBeforeCutoff());
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setIsLocked(!isBeforeCutoff());
+      setIsLocked(!db.isBeforeCutoff());
     }, 1000);
     return () => clearInterval(interval);
   }, []);
@@ -61,13 +61,13 @@ const CutoffBanner = () => {
   );
 };
 
-const DeliveryCard = ({
-  order,
-  onPickUp,
+const DeliveryCard = ({ 
+  order, 
+  onPickUp, 
   onDeliver,
-  loading
-}: {
-  order: DeliveryOrder;
+  loading 
+}: { 
+  order: DeliveryOrder; 
   onPickUp: (id: string) => void;
   onDeliver: (id: string) => void;
   loading: boolean;
@@ -76,22 +76,24 @@ const DeliveryCard = ({
   const isPickedUp = order.status === 'picked_up' || order.status === 'out_for_delivery';
 
   return (
-    <div
-      className={`p-4 rounded-2xl border transition-all ${isDelivered
-          ? 'bg-muted/50 border-border/30 opacity-60'
+    <div 
+      className={`p-4 rounded-2xl border transition-all ${
+        isDelivered 
+          ? 'bg-muted/50 border-border/30 opacity-60' 
           : 'bg-secondary/50 border-border/40 hover:border-primary/30'
-        }`}
+      }`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2">
             <h3 className="font-semibold truncate">{order.customerName}</h3>
-            <Badge
-              variant="outline"
-              className={`text-xs capitalize ${order.deliveryAddressType === 'work'
-                  ? 'border-info/50 text-info'
+            <Badge 
+              variant="outline" 
+              className={`text-xs capitalize ${
+                order.deliveryAddressType === 'work' 
+                  ? 'border-info/50 text-info' 
                   : 'border-primary/50 text-primary'
-                }`}
+              }`}
             >
               {order.deliveryAddressType === 'work' ? (
                 <><Building2 className="w-3 h-3 mr-1" />Work</>
@@ -111,7 +113,7 @@ const DeliveryCard = ({
                 {order.deliveryAddress.street}, {order.deliveryAddress.city} - {order.deliveryAddress.zipCode}
               </span>
             </div>
-
+            
             <div className="flex items-center gap-2 text-muted-foreground">
               <ChefHat className="w-3.5 h-3.5 flex-shrink-0" />
               <span>{order.chefName || 'Unassigned'}</span>
@@ -146,8 +148,8 @@ const DeliveryCard = ({
                 <Truck className="w-3 h-3 mr-1" />
                 Picked Up
               </Badge>
-              <Button
-                size="sm"
+              <Button 
+                size="sm" 
                 className="gradient-accent"
                 onClick={() => onDeliver(order.id)}
                 disabled={loading}
@@ -162,8 +164,8 @@ const DeliveryCard = ({
                 <Clock className="w-3 h-3 mr-1" />
                 Ready
               </Badge>
-              <Button
-                size="sm"
+              <Button 
+                size="sm" 
                 variant="outline"
                 onClick={() => onPickUp(order.id)}
                 disabled={loading}
@@ -200,18 +202,14 @@ export const DeliveryDashboard = () => {
 
   const loadDeliveries = () => {
     setLoading(true);
-    // Legacy API call commented out
-    /*
     const response = api.getTomorrowDeliveries();
     if (response.success) {
       setOrders((response.data as DeliveryOrder[]) || []);
     }
-    */
     setLoading(false);
   };
 
   const handlePickUp = (orderId: string) => {
-    /*
     if (!user) return;
     setActionLoading(true);
     const response = api.markPickedUp(user.id, orderId);
@@ -222,11 +220,9 @@ export const DeliveryDashboard = () => {
       toast({ title: 'Error', description: response.error, variant: 'destructive' });
     }
     setActionLoading(false);
-    */
   };
 
   const handleDeliver = (orderId: string) => {
-    /*
     if (!user) return;
     setActionLoading(true);
     const response = api.markDelivered(user.id, orderId);
@@ -237,7 +233,6 @@ export const DeliveryDashboard = () => {
       toast({ title: 'Error', description: response.error, variant: 'destructive' });
     }
     setActionLoading(false);
-    */
   };
 
   const pendingOrders = orders.filter(o => o.status !== 'delivered');
@@ -320,8 +315,8 @@ export const DeliveryDashboard = () => {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {[...pendingOrders, ...deliveredOrders].map((order) => (
-                    <DeliveryCard
-                      key={order.id}
+                    <DeliveryCard 
+                      key={order.id} 
                       order={order}
                       onPickUp={handlePickUp}
                       onDeliver={handleDeliver}
@@ -344,8 +339,8 @@ export const DeliveryDashboard = () => {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {zoneOrders.map((order) => (
-                      <DeliveryCard
-                        key={order.id}
+                      <DeliveryCard 
+                        key={order.id} 
                         order={order}
                         onPickUp={handlePickUp}
                         onDeliver={handleDeliver}
@@ -370,8 +365,8 @@ export const DeliveryDashboard = () => {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {chefOrders.map((order) => (
-                      <DeliveryCard
-                        key={order.id}
+                      <DeliveryCard 
+                        key={order.id} 
                         order={order}
                         onPickUp={handlePickUp}
                         onDeliver={handleDeliver}

@@ -1,62 +1,39 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { weeklyMenu, getFoodImage } from '@/data/weeklyMenuData';
 import { format, parseISO } from 'date-fns';
-import type { DailyMeal, Meal, Dish } from '@/types';
 
-interface UserMealsProps {
-  dailyMeals: DailyMeal[];
-  allMeals: Meal[];
-  allDishes: Dish[];
-}
+export const UserMeals = () => {
+  const [selectedDay, setSelectedDay] = useState('Tue');
 
-export const UserMeals = ({ dailyMeals, allMeals, allDishes }: UserMealsProps) => {
-  const [selectedDay, setSelectedDay] = useState<string>(format(new Date(), 'EEE'));
-
-  const getMealDetails = (id: string) => {
-    const dish = allDishes.find((d) => d.id === id);
-    if (dish) return { name: dish.name, image: dish.imageUrl || '/placeholder.svg' };
-    const meal = allMeals.find((m) => m.id === id);
-    if (meal) return { name: meal.name, image: meal.imageUrl || '/placeholder.svg' };
-    return { name: 'Unknown Meal', image: '/placeholder.svg' };
-  };
-
-  // Filter meals for the selected day
-  // Assuming dailyMeals has 'date' in YYYY-MM-DD
-  const mealsForDay = dailyMeals
-    .filter((dm) => {
-      try {
-        return format(parseISO(dm.date), 'EEE') === selectedDay;
-      } catch { return false; }
-    })
-    .map((dm) => {
-      const details = getMealDetails(dm.currentMealId);
-      return {
-        ...dm,
-        dishName: details.name,
-        image: details.image,
-        displayDate: dm.date
-      };
-    });
-
-  // Unique days available in dailyMeals to show tabs
-  const availableDays = Array.from(new Set(dailyMeals.map(dm => {
-    try {
-      return format(parseISO(dm.date), 'EEE');
-    } catch { return ''; }
-  }))).filter(Boolean);
-
-  // If no meals, show standard week days as fallback or just available
-  const daysToShow = availableDays.length > 0 ? availableDays : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const mealsForDay = weeklyMenu
+    .filter((day) => format(parseISO(day.date), 'EEE') === selectedDay)
+    .flatMap((day) => [
+      {
+        date: day.date,
+        day: format(parseISO(day.date), 'EEE'),
+        mealType: 'Lunch',
+        dish: day.lunch,
+        image: getFoodImage(day.lunch)
+      },
+      {
+        date: day.date,
+        day: format(parseISO(day.date), 'EEE'),
+        mealType: 'Dinner',
+        dish: day.dinner,
+        image: getFoodImage(day.dinner)
+      }
+    ]);
 
   return (
     <Card className="shadow-card">
       <CardHeader>
-        <CardTitle className="font-display">Your Meal Schedule</CardTitle>
+        <CardTitle className="font-display">Weekly Meal Schedule</CardTitle>
       </CardHeader>
       <CardContent>
         {/* Day Selection Buttons */}
         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', overflowX: 'auto', paddingBottom: '8px' }}>
-          {daysToShow.map((day) => (
+          {['Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
             <button
               key={day}
               onClick={() => setSelectedDay(day)}
@@ -79,9 +56,9 @@ export const UserMeals = ({ dailyMeals, allMeals, allDishes }: UserMealsProps) =
         {/* Meals Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px' }}>
           {mealsForDay.length > 0 ? (
-            mealsForDay.map((meal) => (
+            mealsForDay.map((meal, index) => (
               <div
-                key={meal.id}
+                key={index}
                 style={{
                   borderRadius: '16px',
                   overflow: 'hidden',
@@ -91,7 +68,7 @@ export const UserMeals = ({ dailyMeals, allMeals, allDishes }: UserMealsProps) =
               >
                 <img
                   src={meal.image}
-                  alt={meal.dishName}
+                  alt={meal.dish}
                   style={{ width: '100%', height: '160px', objectFit: 'cover' }}
                   onError={(e) => {
                     const img = e.target as HTMLImageElement;
@@ -100,16 +77,14 @@ export const UserMeals = ({ dailyMeals, allMeals, allDishes }: UserMealsProps) =
                   }}
                 />
                 <div style={{ padding: '12px' }}>
-                  <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600' }}>{meal.dishName}</h3>
-                  <p style={{ margin: '4px 0', color: '#555', fontSize: '14px', textTransform: 'capitalize' }}>{meal.mealTime}</p>
-                  <span style={{ fontSize: '12px', color: '#888' }}>{meal.displayDate} • {meal.status}</span>
+                  <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600' }}>{meal.dish}</h3>
+                  <p style={{ margin: '4px 0', color: '#555', fontSize: '14px' }}>{meal.mealType}</p>
+                  <span style={{ fontSize: '12px', color: '#888' }}>{meal.date}</span>
                 </div>
               </div>
             ))
           ) : (
-            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '20px', color: '#888' }}>
-              <p>No meals scheduled for {selectedDay}.</p>
-            </div>
+            <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#999' }}>No meals scheduled for this day</p>
           )}
         </div>
       </CardContent>
