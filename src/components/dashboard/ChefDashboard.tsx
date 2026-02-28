@@ -19,7 +19,6 @@ export const ChefDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showAddDish, setShowAddDish] = useState(false);
   const [canModify] = useState(!api.canModifyMeal());
-  const [menuFile, setMenuFile] = useState<File | null>(null);
 
   // Menu card upload
   const [menuFile, setMenuFile] = useState<File | null>(null);
@@ -61,18 +60,19 @@ export const ChefDashboard = () => {
     setLoading(false);
   };
 
-  const handleMenuUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !menuFile) return;
-
+  const handleMenuUpload = async () => {
+    if (!menuFile || !user) return;
+    setUploading(true);
     try {
-      const weekStart = new Date().toISOString().split('T')[0]; // Current date as proxy for week start
-      await backendApi.uploadMenuCard(user.id, menuFile, weekStart);
-      toast({ title: 'Menu Uploaded', description: 'Your menu card has been updated.' });
+      const weekStart = new Date().toISOString().split('T')[0];
+      const result = await backendApi.uploadMenuCard(user.id, menuFile, weekStart);
+      setUploadedUrl(result.menuCardUrl || null);
+      toast({ title: 'Menu Uploaded!', description: 'Your weekly menu card is now live for customers.' });
       setMenuFile(null);
-    } catch (error) {
-      console.error(error);
-      toast({ title: 'Upload Failed', description: 'Could not upload menu card.', variant: 'destructive' });
+    } catch (err: any) {
+      toast({ title: 'Upload Failed', description: err.message || 'Could not upload menu card.', variant: 'destructive' });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -124,22 +124,6 @@ export const ChefDashboard = () => {
     if (newOption.trim()) {
       setCustomOptions([...customOptions, newOption.trim()]);
       setNewOption('');
-    }
-  };
-
-  const handleMenuUpload = async () => {
-    if (!menuFile || !user) return;
-    setUploading(true);
-    try {
-      const weekStart = new Date().toISOString().split('T')[0];
-      const result = await backendApi.uploadMenuCard(user.id, menuFile, weekStart);
-      setUploadedUrl(result.menuCardUrl || null);
-      toast({ title: 'Menu Uploaded!', description: 'Your weekly menu card is now live for customers.' });
-      setMenuFile(null);
-    } catch (err: any) {
-      toast({ title: 'Upload Failed', description: err.message || 'Something went wrong.', variant: 'destructive' });
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -265,31 +249,11 @@ export const ChefDashboard = () => {
           </div>
         </div>
 
-        {/* Menu Upload Card */}
-        <Card className="mb-6 shadow-soft bg-secondary/20">
-          <CardHeader>
-            <CardTitle className="font-display flex items-center gap-2">
-              <UtensilsCrossed className="w-5 h-5 text-primary" />
-              Weekly Menu Card
-            </CardTitle>
-            <CardDescription>Upload your menu brochure for customers</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleMenuUpload} className="flex gap-4 items-end">
-              <div className="grid w-full max-w-sm items-center gap-1.5">
-                <Label htmlFor="menu-upload">Menu Image</Label>
-                <Input id="menu-upload" type="file" accept="image/*" onChange={(e) => setMenuFile(e.target.files?.[0] || null)} />
-              </div>
-              <Button type="submit" disabled={!menuFile} className="gradient-primary">Upload</Button>
-            </form>
-          </CardContent>
-        </Card>
-
         {/* Finalization Banner */}
         <div className={`mb-6 p-4 rounded-2xl flex items-center gap-3 ${canModify ? 'bg-primary/5 border border-primary/20' : 'bg-muted/80 border border-border/50'}`}>
           <Clock className={`w-5 h-5 ${canModify ? 'text-primary' : 'text-muted-foreground'}`} />
           <p className={canModify ? 'text-primary' : 'text-foreground'}>
-            {canModify ? 'Tomorrow\'s prep list is ready! Time to cook.' : 'Orders still coming in. Final list after 8 PM.'}
+            {canModify ? "Tomorrow's prep list is ready! Time to cook." : 'Orders still coming in. Final list after 8 PM.'}
           </p>
         </div>
 
@@ -389,7 +353,7 @@ export const ChefDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Menu Card Upload */}
+        {/* Weekly Menu Card Upload */}
         <Card className="shadow-soft mb-6 border-primary/10">
           <CardHeader>
             <CardTitle className="font-display flex items-center gap-2">
