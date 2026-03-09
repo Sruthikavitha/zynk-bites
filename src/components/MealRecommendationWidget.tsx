@@ -14,7 +14,7 @@ import {
 import { Sparkles, Loader2 } from 'lucide-react';
 import * as api from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
-import type { MealRecommendation, UserPreferences } from '@/types';
+import type { MealRecommendation, UserPreferences, DietType, HealthGoal } from '@/types';
 
 export const MealRecommendationWidget = () => {
   const { toast } = useToast();
@@ -85,10 +85,10 @@ export const MealRecommendationWidget = () => {
           variant: 'destructive',
         });
       }
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'Failed to generate recommendations',
+        description: error instanceof Error ? error.message : 'Failed to generate recommendations',
         variant: 'destructive',
       });
     } finally {
@@ -102,7 +102,7 @@ export const MealRecommendationWidget = () => {
         <Card className="border-0 shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-amber-500" />
+              <Sparkles className="w-5 h-5 text-green-500" />
               Get Personalized Meal Recommendations
             </CardTitle>
             <CardDescription>
@@ -117,7 +117,7 @@ export const MealRecommendationWidget = () => {
               </Label>
               <Select
                 value={preferences.dietType}
-                onValueChange={(value: any) =>
+                onValueChange={(value: DietType) =>
                   setPreferences({ ...preferences, dietType: value })
                 }
               >
@@ -141,7 +141,7 @@ export const MealRecommendationWidget = () => {
               </Label>
               <Select
                 value={preferences.healthGoal}
-                onValueChange={(value: any) =>
+                onValueChange={(value: HealthGoal) =>
                   setPreferences({ ...preferences, healthGoal: value })
                 }
               >
@@ -236,7 +236,7 @@ export const MealRecommendationWidget = () => {
             <Button
               onClick={handleGetRecommendations}
               disabled={loading}
-              className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700"
+              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
             >
               {loading ? (
                 <>
@@ -257,7 +257,7 @@ export const MealRecommendationWidget = () => {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-amber-500" />
+                <Sparkles className="w-5 h-5 text-green-500" />
                 Your Personalized Meal Plan
               </span>
               <Button
@@ -274,21 +274,21 @@ export const MealRecommendationWidget = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Breakfast */}
-            <div className="space-y-2 p-4 bg-amber-50 rounded-lg border border-amber-200">
-              <h3 className="font-semibold text-lg text-amber-900">🌅 Breakfast</h3>
-              <h4 className="text-base font-medium text-amber-800">
+            <div className="space-y-2 p-4 bg-green-50 rounded-lg border border-green-200">
+              <h3 className="font-semibold text-lg text-green-900">🌅 Breakfast</h3>
+              <h4 className="text-base font-medium text-green-800">
                 {recommendations.breakfast.mealName}
               </h4>
-              <p className="text-sm text-amber-700">{recommendations.breakfast.reason}</p>
+              <p className="text-sm text-green-700">{recommendations.breakfast.reason}</p>
             </div>
 
             {/* Lunch */}
-            <div className="space-y-2 p-4 bg-orange-50 rounded-lg border border-orange-200">
-              <h3 className="font-semibold text-lg text-orange-900">🍽️ Lunch</h3>
-              <h4 className="text-base font-medium text-orange-800">
+            <div className="space-y-2 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+              <h3 className="font-semibold text-lg text-emerald-900">🍽️ Lunch</h3>
+              <h4 className="text-base font-medium text-emerald-800">
                 {recommendations.lunch.mealName}
               </h4>
-              <p className="text-sm text-orange-700">{recommendations.lunch.reason}</p>
+              <p className="text-sm text-emerald-700">{recommendations.lunch.reason}</p>
             </div>
 
             {/* Dinner */}

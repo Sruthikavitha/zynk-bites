@@ -47,7 +47,7 @@ export const MealSkipDecisionWidget: React.FC = () => {
       const response = getSkipDecision({
         mealType: mealType as "breakfast" | "lunch" | "dinner",
         skipCount: parseInt(skipCount.toString()) || 0,
-        healthGoal: healthGoal as any,
+        healthGoal: healthGoal as "weight-loss" | "muscle-gain" | "maintenance" | "energy" | "balanced",
         subscriptionStatus: subscriptionStatus as "active" | "paused" | "cancelled",
         consecutiveSkips: parseInt(consecutiveSkips.toString()) || 0,
         lastMealTime: new Date().toISOString(),

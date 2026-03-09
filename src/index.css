@@ -1,88 +1,108 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Source+Sans+Pro:wght@300;400;600;700&family=Josefin+Sans:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   🍽️ MODERN CHEF'S KITCHEN THEME
+   Professional, Sleek, Restaurant-Quality Design
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 @layer base {
   :root {
-    --background: 45 30% 97%;
-    --foreground: 150 10% 15%;
+    /* Core Colors - Clean & Professional */
+    --background: 0 0% 98%;
+    --foreground: 0 0% 12%;
 
-    --card: 45 40% 99%;
-    --card-foreground: 150 10% 15%;
+    /* Cards - Subtle Gray Tones */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 12%;
 
-    --popover: 45 40% 99%;
-    --popover-foreground: 150 10% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 12%;
 
-    --primary: 145 45% 38%;
-    --primary-foreground: 45 40% 98%;
+    /* Primary - Charcoal Black */
+    --primary: 0 0% 18%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 145 25% 94%;
-    --secondary-foreground: 150 10% 15%;
+    /* Secondary - Light Steel */
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 18%;
 
-    --muted: 145 15% 92%;
-    --muted-foreground: 150 8% 45%;
+    /* Muted - Soft Grays */
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 85 50% 45%;
-    --accent-foreground: 45 40% 98%;
+    /* Accent - Fresh Green for kitchen theme */
+    --accent: 142 70% 45%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 65% 52%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 145 20% 88%;
-    --input: 145 20% 88%;
-    --ring: 145 45% 38%;
+    /* Borders - Clean lines */
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 18%;
 
-    --radius: 1rem;
+    --radius: 0.5rem;
 
+    /* Kitchen-specific colors */
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --info: 200 70% 48%;
+    --info: 210 100% 50%;
     --info-foreground: 0 0% 100%;
 
-    --chef: 25 70% 50%;
+    --chef: 0 0% 18%;
     --chef-foreground: 0 0% 100%;
 
-    --delivery: 145 40% 42%;
+    --delivery: 0 0% 35%;
     --delivery-foreground: 0 0% 100%;
 
-    --admin: 200 50% 45%;
+    --admin: 0 0% 25%;
     --admin-foreground: 0 0% 100%;
 
-    --health: 145 50% 42%;
+    --health: 142 70% 45%;
     --health-foreground: 0 0% 100%;
+
+    /* Steel/Metallic accents */
+    --steel: 0 0% 75%;
+    --steel-foreground: 0 0% 18%;
+
+    --copper: 142 70% 45%;
+    --copper-foreground: 0 0% 100%;
   }
 
   .dark {
-    --background: 150 15% 8%;
-    --foreground: 45 30% 95%;
+    --background: 0 0% 7%;
+    --foreground: 0 0% 95%;
 
-    --card: 150 12% 12%;
-    --card-foreground: 45 30% 95%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 95%;
 
-    --popover: 150 12% 12%;
-    --popover-foreground: 45 30% 95%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 95%;
 
-    --primary: 145 45% 45%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 0 0% 95%;
+    --primary-foreground: 0 0% 10%;
 
-    --secondary: 150 12% 16%;
-    --secondary-foreground: 45 30% 95%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 95%;
 
-    --muted: 150 10% 18%;
-    --muted-foreground: 145 15% 60%;
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 60%;
 
-    --accent: 85 50% 50%;
+    --accent: 142 70% 50%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 55% 40%;
+    --destructive: 0 62% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 150 10% 18%;
-    --input: 150 10% 18%;
-    --ring: 145 45% 45%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 0 0% 80%;
   }
 }
 
@@ -93,46 +113,389 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Source Sans Pro', sans-serif;
+    letter-spacing: 0.01em;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Manrope', sans-serif;
+    font-family: 'Playfair Display', serif;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  /* Professional kitchen typography */
+  .font-chef {
+    font-family: 'Josefin Sans', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
   }
 }
 
 @layer utilities {
+  /* ═══════════════════════════════════════════════════════════════════════════
+     🍽️ MODERN CHEF'S KITCHEN - UTILITY CLASSES
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  /* Glass effect - Stainless Steel inspired */
   .glass-card {
-    @apply bg-card/90 backdrop-blur-sm border border-border/40;
+    @apply bg-card/95 backdrop-blur-md border border-border/50;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   }
 
+  /* Steel Panel - Modern kitchen appliance look */
+  .steel-panel {
+    @apply bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200;
+    box-shadow: 
+      inset 0 1px 0 rgba(255,255,255,0.8),
+      0 2px 8px rgba(0,0,0,0.06);
+  }
+
+  /* Chef's Card - Clean, professional */
+  .chef-card {
+    @apply bg-white border border-gray-200 rounded-lg;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.04);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .chef-card:hover {
+    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    transform: translateY(-4px);
+  }
+
+  /* Paper Card - Menu/Recipe card style */
   .paper-card {
-    @apply bg-card border border-border/30 rounded-2xl;
-    background-image: linear-gradient(135deg, hsl(45 40% 99%) 0%, hsl(145 20% 97%) 100%);
+    @apply bg-white border border-gray-100 rounded-md;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
   }
 
+  /* Gradient - Charcoal Professional */
   .gradient-primary {
-    background: linear-gradient(135deg, hsl(145 45% 38%) 0%, hsl(145 50% 32%) 100%);
+    background: linear-gradient(135deg, hsl(0 0% 18%) 0%, hsl(0 0% 12%) 100%);
   }
 
+  /* Gradient - Copper Accent */
   .gradient-accent {
-    background: linear-gradient(135deg, hsl(85 50% 45%) 0%, hsl(85 55% 38%) 100%);
+    background: linear-gradient(135deg, hsl(142 70% 45%) 0%, hsl(142 76% 36%) 100%);
   }
 
-  .gradient-herbal {
-    background: linear-gradient(135deg, hsl(145 40% 42%) 0%, hsl(85 45% 40%) 100%);
+  /* Gradient - Steel Metallic */
+  .gradient-steel {
+    background: linear-gradient(180deg, #e8e8e8 0%, #c0c0c0 50%, #a8a8a8 100%);
   }
 
+  /* Gradient - Kitchen Counter */
+  .gradient-counter {
+    background: linear-gradient(180deg, #fafafa 0%, #f5f5f5 100%);
+  }
+
+  /* Kitchen line decoration */
+  .kitchen-line {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, hsl(0 0% 75%), transparent);
+  }
+
+  /* Copper accent line */
+  .copper-line {
+    height: 3px;
+    background: linear-gradient(90deg, transparent, hsl(142 70% 45%), transparent);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     🎬 ENHANCED ANIMATIONS
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  /* Basic Animations */
   .animate-fade-in {
-    animation: fadeIn 0.4s ease-out;
+    animation: fadeIn 0.6s ease-out forwards;
   }
 
   .animate-slide-up {
-    animation: slideUp 0.5s ease-out;
+    animation: slideUp 0.6s ease-out forwards;
   }
 
   .animate-scale-in {
-    animation: scaleIn 0.3s ease-out;
+    animation: scaleIn 0.4s ease-out forwards;
+  }
+
+  .animate-slide-down {
+    animation: slideDown 0.6s ease-out forwards;
+  }
+
+  .animate-slide-left {
+    animation: slideLeft 0.6s ease-out forwards;
+  }
+
+  .animate-slide-right {
+    animation: slideRight 0.6s ease-out forwards;
+  }
+
+  /* Floating Animation */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-float-slow {
+    animation: float 8s ease-in-out infinite;
+  }
+
+  .animate-float-delayed {
+    animation: float 6s ease-in-out infinite 2s;
+  }
+
+  /* Pulse Animations */
+  .animate-pulse-soft {
+    animation: pulseSoft 3s ease-in-out infinite;
+  }
+
+  .animate-pulse-glow {
+    animation: pulseGlow 2s ease-in-out infinite;
+  }
+
+  /* Shimmer Effect */
+  .animate-shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .animate-shimmer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.3),
+      transparent
+    );
+    animation: shimmer 2.5s infinite;
+  }
+
+  /* Rotate Animation */
+  .animate-spin-slow {
+    animation: spinSlow 20s linear infinite;
+  }
+
+  /* Bounce Animation */
+  .animate-bounce-soft {
+    animation: bounceSoft 2s ease-in-out infinite;
+  }
+
+  /* Stagger Animation Delays */
+  .animate-delay-100 { animation-delay: 100ms; }
+  .animate-delay-200 { animation-delay: 200ms; }
+  .animate-delay-300 { animation-delay: 300ms; }
+  .animate-delay-400 { animation-delay: 400ms; }
+  .animate-delay-500 { animation-delay: 500ms; }
+  .animate-delay-600 { animation-delay: 600ms; }
+  .animate-delay-700 { animation-delay: 700ms; }
+  .animate-delay-800 { animation-delay: 800ms; }
+
+  /* Initial state for animations */
+  .animate-on-scroll {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     🌟 ANIMATED BACKGROUNDS
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  /* Animated Gradient Background */
+  .bg-animated-gradient {
+    background: linear-gradient(-45deg, #1a1a1a, #2d2d2d, #1a1a1a, #3d3d3d);
+    background-size: 400% 400%;
+    animation: gradientShift 15s ease infinite;
+  }
+
+  /* Floating Particles Background */
+  .bg-particles {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .bg-particles::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+      radial-gradient(circle at 20% 80%, rgba(34, 197, 94, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(34, 197, 94, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 40% 40%, rgba(255, 255, 255, 0.05) 0%, transparent 30%);
+    animation: particleFloat 20s ease-in-out infinite;
+  }
+
+  /* Moving Grid Pattern */
+  .bg-grid-animated {
+    background-image: 
+      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 50px 50px;
+    animation: gridMove 20s linear infinite;
+  }
+
+  /* Copper Glow Effect */
+  .glow-copper {
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.3),
+                0 0 40px rgba(34, 197, 94, 0.2),
+                0 0 60px rgba(34, 197, 94, 0.1);
+  }
+
+  .glow-copper-animated {
+    animation: copperGlow 3s ease-in-out infinite;
+  }
+
+  /* Spotlight Effect */
+  .spotlight {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .spotlight::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(
+      circle at center,
+      rgba(34, 197, 94, 0.1) 0%,
+      transparent 50%
+    );
+    animation: spotlightMove 10s ease-in-out infinite;
+  }
+
+  /* Button styles - Professional with animations */
+  .btn-chef {
+    @apply px-6 py-3 bg-primary text-primary-foreground font-medium rounded-sm;
+    font-family: 'Josefin Sans', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.85rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-chef::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    );
+    transition: left 0.5s ease;
+  }
+
+  .btn-chef:hover {
+    @apply bg-gray-700;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+  }
+
+  .btn-chef:hover::before {
+    left: 100%;
+  }
+
+  /* Green accent button with animations */
+  .btn-copper,
+  .btn-green {
+    @apply px-6 py-3 text-white font-medium rounded-sm;
+    background: linear-gradient(135deg, hsl(142 70% 45%) 0%, hsl(142 76% 36%) 100%);
+    font-family: 'Josefin Sans', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.85rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-copper::before,
+  .btn-green::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.3),
+      transparent
+    );
+    transition: left 0.5s ease;
+  }
+
+  .btn-copper:hover,
+  .btn-green:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(34, 197, 94, 0.4);
+  }
+
+  .btn-copper:hover::before,
+  .btn-green:hover::before {
+    left: 100%;
+  }
+
+  /* Underline Animation */
+  .hover-underline {
+    position: relative;
+  }
+
+  .hover-underline::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: hsl(142 70% 45%);
+    transition: width 0.3s ease;
+  }
+
+  .hover-underline:hover::after {
+    width: 100%;
+  }
+
+  /* Card Hover Lift */
+  .hover-lift {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Icon Spin on Hover */
+  .hover-spin:hover .icon {
+    animation: spinOnce 0.6s ease-in-out;
+  }
+
+  /* Text Reveal Animation */
+  .text-reveal {
+    overflow: hidden;
+  }
+
+  .text-reveal span {
+    display: inline-block;
+    animation: textReveal 0.8s ease-out forwards;
+    opacity: 0;
+    transform: translateY(100%);
   }
 }
 
@@ -142,51 +505,334 @@
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(12px); }
+  from { opacity: 0; transform: translateY(30px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.96); }
+  from { opacity: 0; transform: scale(0.9); }
   to { opacity: 1; transform: scale(1); }
 }
 
-/* Meal cards grid (moved here so styles load via index.css) */
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideLeft {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideRight {
+  from { opacity: 0; transform: translateX(-30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  25% { transform: translateY(-10px) rotate(1deg); }
+  50% { transform: translateY(-20px) rotate(0deg); }
+  75% { transform: translateY(-10px) rotate(-1deg); }
+}
+
+@keyframes pulseSoft {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.02); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { 
+    box-shadow: 0 0 5px rgba(34, 197, 94, 0.2),
+                0 0 10px rgba(34, 197, 94, 0.1);
+  }
+  50% { 
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.4),
+                0 0 40px rgba(34, 197, 94, 0.2);
+  }
+}
+
+@keyframes shimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes spinOnce {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes bounceSoft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes particleFloat {
+  0%, 100% { 
+    transform: translateY(0) translateX(0);
+    opacity: 0.5;
+  }
+  25% { 
+    transform: translateY(-20px) translateX(10px);
+    opacity: 0.7;
+  }
+  50% { 
+    transform: translateY(-10px) translateX(-10px);
+    opacity: 0.5;
+  }
+  75% { 
+    transform: translateY(-30px) translateX(5px);
+    opacity: 0.6;
+  }
+}
+
+@keyframes gridMove {
+  0% { background-position: 0 0; }
+  100% { background-position: 50px 50px; }
+}
+
+@keyframes copperGlow {
+  0%, 100% { 
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.2),
+                0 0 40px rgba(34, 197, 94, 0.1);
+  }
+  50% { 
+    box-shadow: 0 0 30px rgba(34, 197, 94, 0.4),
+                0 0 60px rgba(34, 197, 94, 0.2),
+                0 0 80px rgba(34, 197, 94, 0.1);
+  }
+}
+
+@keyframes spotlightMove {
+  0%, 100% { transform: translate(-30%, -30%); }
+  25% { transform: translate(30%, -30%); }
+  50% { transform: translate(30%, 30%); }
+  75% { transform: translate(-30%, 30%); }
+}
+
+@keyframes textReveal {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes borderGlow {
+  0%, 100% { border-color: rgba(34, 197, 94, 0.3); }
+  50% { border-color: rgba(34, 197, 94, 0.8); }
+}
+
+@keyframes subtleShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+/* Kitchen Loader Animations */
+@keyframes spoonStir {
+  0%, 100% { transform: rotate(-15deg); }
+  50% { transform: rotate(15deg); }
+}
+
+@keyframes chefBounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-8px) scale(1.1); }
+}
+
+@keyframes utensilsRotate {
+  0% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(10deg) scale(1.05); }
+  50% { transform: rotate(0deg) scale(1); }
+  75% { transform: rotate(-10deg) scale(1.05); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+
+@keyframes floatParticle {
+  0%, 100% { 
+    transform: translateY(0) scale(1);
+    opacity: 0.6;
+  }
+  50% { 
+    transform: translateY(-10px) scale(1.2);
+    opacity: 1;
+  }
+}
+
+@keyframes plateSpinner {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes cookingBubble {
+  0%, 100% { 
+    transform: scale(1) translateY(0);
+    opacity: 0.7;
+  }
+  50% { 
+    transform: scale(1.3) translateY(-15px);
+    opacity: 1;
+  }
+}
+
+@keyframes steamRise {
+  0% {
+    transform: translateY(0) scaleX(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translateY(-20px) scaleX(1.2);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateY(-40px) scaleX(0.8);
+    opacity: 0;
+  }
+}
+
+@keyframes pageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pageSlideOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
+/* Animation utility classes for loaders */
+.animate-spoon-stir {
+  animation: spoonStir 1.5s ease-in-out infinite;
+}
+
+.animate-chef-bounce {
+  animation: chefBounce 1s ease-in-out infinite;
+}
+
+.animate-utensils-rotate {
+  animation: utensilsRotate 2s ease-in-out infinite;
+}
+
+.animate-steam {
+  animation: steamRise 2s ease-out infinite;
+}
+
+.animate-page-in {
+  animation: pageSlideIn 0.4s ease-out forwards;
+}
+
+.animate-page-out {
+  animation: pageSlideOut 0.3s ease-in forwards;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🍽️ MEAL CARDS - Professional Kitchen Style
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .meal-chart {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 24px;
 }
 
 .meal-card {
-  border-radius: 16px;
+  border-radius: 4px;
   overflow: hidden;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
   background: #fff;
+  border: 1px solid #e5e5e5;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  transition: all 0.25s ease;
+}
+
+.meal-card:hover {
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  transform: translateY(-4px);
 }
 
 .meal-card img {
   width: 100%;
-  height: 160px;
+  height: 180px;
   object-fit: cover;
+  filter: saturate(0.95);
 }
 
 .meal-info {
-  padding: 12px;
+  padding: 16px;
+  border-top: 2px solid hsl(25 75% 47% / 0.3);
 }
 
 .meal-info h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
+  font-family: 'Playfair Display', serif;
+  font-weight: 600;
+  color: #1a1a1a;
 }
 
 .meal-info p {
-  margin: 4px 0;
-  color: #555;
-  font-size: 14px;
+  margin: 6px 0;
+  color: #666;
+  font-size: 0.875rem;
+  font-family: 'Source Sans Pro', sans-serif;
 }
 
 .meal-info span {
-  font-size: 12px;
-  color: #888;
+  font-size: 0.75rem;
+  color: #999;
+  font-family: 'Josefin Sans', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🍽️ SCROLLBAR - Sleek Kitchen Style
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f5f5f5;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c0c0c0;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a0a0a0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🍽️ SELECTION - Copper Accent
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+::selection {
+  background: hsl(25 75% 47% / 0.2);
+  color: #1a1a1a;
 }

@@ -14,8 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-        display: ['Manrope', 'sans-serif'],
+        sans: ['Source Sans Pro', 'sans-serif'],
+        display: ['Playfair Display', 'serif'],
+        chef: ['Josefin Sans', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -75,6 +76,22 @@ export default {
           DEFAULT: "hsl(var(--health))",
           foreground: "hsl(var(--health-foreground))",
         },
+        // Modern Chef's Kitchen - Additional Colors
+        steel: {
+          DEFAULT: "#c0c0c0",
+          light: "#e8e8e8",
+          dark: "#909090",
+        },
+        copper: {
+          DEFAULT: "#22c55e",
+          light: "#4ade80",
+          dark: "#16a34a",
+        },
+        charcoal: {
+          DEFAULT: "#2d2d2d",
+          light: "#4a4a4a",
+          dark: "#1a1a1a",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -94,17 +111,23 @@ export default {
         shimmer: {
           "100%": { transform: "translateX(100%)" },
         },
+        "fade-up": {
+          "0%": { opacity: "0", transform: "translateY(10px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         shimmer: "shimmer 1.5s infinite",
+        "fade-up": "fade-up 0.4s ease-out",
       },
       boxShadow: {
-        'card': '0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.03)',
-        'card-hover': '0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04)',
-        'elevated': '0 4px 12px -2px rgba(0, 0, 0, 0.06), 0 2px 6px -2px rgba(0, 0, 0, 0.04)',
-        'soft': '0 2px 8px -2px rgba(60, 100, 60, 0.08)',
+        'card': '0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.04)',
+        'card-hover': '0 8px 24px -4px rgba(0, 0, 0, 0.12)',
+        'elevated': '0 4px 16px -2px rgba(0, 0, 0, 0.08)',
+        'steel': '0 2px 8px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.5)',
+        'kitchen': '0 4px 20px rgba(0, 0, 0, 0.08)',
       },
     },
   },

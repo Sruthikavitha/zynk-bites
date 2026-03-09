@@ -78,7 +78,7 @@ export const ChefDiscovery = () => {
   };
 
   const getSpecialDish = (dishes: Dish[]) => {
-    return dishes.find(d => (d as any).isSpecial) || dishes[0];
+    return dishes.find(d => d.isSpecial) || dishes[0];
   };
 
   const filteredChefs = getFilteredAndSortedChefs();
@@ -294,7 +294,7 @@ export const ChefDiscovery = () => {
                           <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
                             <p className="text-xs font-medium text-primary mb-1 flex items-center gap-1">
                               <Sparkles className="w-3 h-3" />
-                              {(specialDish as any).isSpecial ? "Chef's Special" : "Popular Dish"}
+                              {specialDish.isSpecial ? "Chef's Special" : "Popular Dish"}
                             </p>
                             <p className="font-medium text-sm">{specialDish.name}</p>
                             <p className="text-xs text-muted-foreground mt-0.5">

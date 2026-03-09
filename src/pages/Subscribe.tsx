@@ -200,7 +200,7 @@ export const Subscribe = () => {
                           <p className="text-sm text-muted-foreground">{chef.specialty}</p>
                           <div className="flex items-center gap-2 mt-1">
                             <Star className="w-4 h-4 fill-warning text-warning" />
-                            <span className="text-sm font-medium">{(chef as any).avgRating?.toFixed(1) || chef.rating || 'New'}</span>
+                            <span className="text-sm font-medium">{chef.rating?.toFixed(1) || 'New'}</span>
                             <span className="text-xs text-muted-foreground">• {chef.dishes.length} dishes</span>
                           </div>
                         </div>
@@ -273,7 +273,7 @@ export const Subscribe = () => {
                       <div className="flex-1">
                         <h4 className="font-medium flex items-center gap-2">
                           {dish.name}
-                          {(dish as any).isSpecial && <Sparkles className="w-4 h-4 text-warning" />}
+                          {dish.isSpecial && <Sparkles className="w-4 h-4 text-warning" />}
                         </h4>
                         <div className="flex gap-3 text-xs text-muted-foreground mt-1">
                           <span>{dish.nutritionalInfo.calories} cal</span>

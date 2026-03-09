@@ -33,9 +33,9 @@ const AddressForm = ({
   icon: typeof Home;
 }) => {
   return (
-    <div className="space-y-3 p-4 rounded-xl bg-secondary/50">
-      <div className="flex items-center gap-2 text-sm font-medium">
-        <Icon className="w-4 h-4 text-primary" />
+    <div className="space-y-3 p-5 rounded-sm bg-secondary border border-gray-200">
+      <div className="flex items-center gap-2 font-chef text-xs tracking-wider text-charcoal">
+        <Icon className="w-4 h-4 text-green-500" />
         {title}
       </div>
       <Input
@@ -43,6 +43,7 @@ const AddressForm = ({
         value={address.street}
         onChange={(e) => setAddress({ ...address, street: e.target.value })}
         type="text"
+        className="rounded-sm border-gray-300 focus:border-green-500 focus:ring-green-500"
       />
       <div className="grid grid-cols-2 gap-2">
         <Input
@@ -50,12 +51,14 @@ const AddressForm = ({
           value={address.city}
           onChange={(e) => setAddress({ ...address, city: e.target.value })}
           type="text"
+          className="rounded-sm border-gray-300 focus:border-green-500 focus:ring-green-500"
         />
         <Input
           placeholder="State"
           value={address.state}
           onChange={(e) => setAddress({ ...address, state: e.target.value })}
           type="text"
+          className="rounded-sm border-gray-300 focus:border-green-500 focus:ring-green-500"
         />
       </div>
       <Input
@@ -63,6 +66,7 @@ const AddressForm = ({
         value={address.zipCode}
         onChange={(e) => setAddress({ ...address, zipCode: e.target.value })}
         type="text"
+        className="rounded-sm border-gray-300 focus:border-green-500 focus:ring-green-500"
       />
     </div>
   );
@@ -165,181 +169,196 @@ export const Register = () => {
 
   return (
     <Layout>
-      <div className="container max-w-lg py-12 px-4">
-        <Card className="animate-fade-in shadow-elevated">
-          <CardHeader className="text-center">
-            <CardTitle className="font-display text-2xl">
+      <div className="min-h-[80vh] flex items-center justify-center bg-gradient-to-b from-secondary to-background py-12 px-4">
+        <div className="w-full max-w-lg">
+          <div className="text-center mb-8">
+            <p className="font-chef text-xs tracking-widest text-green-500 mb-4">
+              {step === 'basic' && 'JOIN THE KITCHEN'}
+              {step === 'addresses' && 'DELIVERY SETUP'}
+              {step === 'kitchen' && 'CHEF PROFILE'}
+            </p>
+            <h1 className="font-display text-3xl font-bold text-charcoal">
               {step === 'basic' && 'Create Account'}
               {step === 'addresses' && 'Delivery Addresses'}
               {step === 'kitchen' && 'Kitchen Setup'}
-            </CardTitle>
-            <CardDescription>
-              {step === 'basic' && 'Join ZYNK and never worry about meals again'}
-              {step === 'addresses' && 'Add your home and work addresses for easy delivery switching'}
-              {step === 'kitchen' && 'Tell us about your kitchen and service area'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {step === 'basic' && (
-              <>
-                {/* Role Toggle */}
-                <div className="flex gap-2 p-1 bg-secondary rounded-lg mb-6">
-                  <button
-                    type="button"
-                    onClick={() => setType('customer')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md text-sm font-medium transition-all ${
-                      type === 'customer' 
-                        ? 'bg-card shadow-card text-foreground' 
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    <User className="w-4 h-4" />
-                    Customer
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setType('chef')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md text-sm font-medium transition-all ${
-                      type === 'chef' 
-                        ? 'bg-card shadow-card text-foreground' 
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    <ChefHat className="w-4 h-4" />
-                    Chef Partner
-                  </button>
-                </div>
+            </h1>
+            <div className="w-12 h-0.5 bg-charcoal mx-auto mt-4" />
+            <p className="mt-4 text-muted-foreground">
+              {step === 'basic' && 'Join ZYNK and experience culinary excellence'}
+              {step === 'addresses' && 'Add your locations for seamless delivery'}
+              {step === 'kitchen' && 'Tell us about your culinary expertise'}
+            </p>
+          </div>
 
-                <form onSubmit={handleBasicSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
-                    <Input
-                      id="name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="John Doe"
-                      required
-                    />
+          <Card className="chef-card border border-gray-200 shadow-kitchen">
+            <CardContent className="pt-8 pb-6">
+              {step === 'basic' && (
+                <>
+                  {/* Role Toggle - Professional Style */}
+                  <div className="flex gap-0 mb-8 border border-gray-200 rounded-sm overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setType('customer')}
+                      className={`flex-1 flex items-center justify-center gap-2 py-3 font-chef text-xs tracking-wider transition-all ${
+                        type === 'customer' 
+                          ? 'bg-charcoal text-white' 
+                          : 'bg-white text-charcoal hover:bg-gray-50'
+                      }`}
+                    >
+                      <User className="w-4 h-4" />
+                      CUSTOMER
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setType('chef')}
+                      className={`flex-1 flex items-center justify-center gap-2 py-3 font-chef text-xs tracking-wider transition-all ${
+                        type === 'chef' 
+                          ? 'bg-charcoal text-white' 
+                          : 'bg-white text-charcoal hover:bg-gray-50'
+                      }`}
+                    >
+                      <ChefHat className="w-4 h-4" />
+                      CHEF PARTNER
+                    </button>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="john@example.com"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <div className="relative">
-                      <Input
-                        id="password"
-                        type={showPassword ? 'text' : 'password'}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+91-9876543210"
-                    />
-                  </div>
-
-                  {type === 'chef' && (
+                  <form onSubmit={handleBasicSubmit} className="space-y-5">
                     <div className="space-y-2">
-                      <Label htmlFor="specialty">Specialty Cuisine</Label>
+                      <Label htmlFor="name" className="font-chef text-xs tracking-wider text-charcoal">FULL NAME</Label>
                       <Input
-                        id="specialty"
-                        value={specialty}
-                        onChange={(e) => setSpecialty(e.target.value)}
-                        placeholder="North Indian, Continental..."
+                        id="name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="John Doe"
+                        required
+                        className="rounded-sm border-gray-300 focus:border-green-500 focus:ring-green-500"
                       />
                     </div>
-                  )}
 
-                  <Button type="submit" className="w-full gradient-primary">
-                    Continue
-                    <ChevronRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </form>
-              </>
-            )}
+                    <div className="space-y-2">
+                      <Label htmlFor="email" className="font-chef text-xs tracking-wider text-charcoal">EMAIL</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="john@example.com"
+                        required
+                        className="rounded-sm border-gray-300 focus:border-green-500 focus:ring-green-500"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="password" className="font-chef text-xs tracking-wider text-charcoal">PASSWORD</Label>
+                      <div className="relative">
+                        <Input
+                          id="password"
+                          type={showPassword ? 'text' : 'password'}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="••••••••"
+                          required
+                          className="rounded-sm border-gray-300 focus:border-green-500 focus:ring-green-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-charcoal"
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="phone" className="font-chef text-xs tracking-wider text-charcoal">PHONE</Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="+91-9876543210"
+                        className="rounded-sm border-gray-300 focus:border-green-500 focus:ring-green-500"
+                      />
+                    </div>
+
+                    {type === 'chef' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="specialty" className="font-chef text-xs tracking-wider text-charcoal">SPECIALTY CUISINE</Label>
+                        <Input
+                          id="specialty"
+                          value={specialty}
+                          onChange={(e) => setSpecialty(e.target.value)}
+                          placeholder="North Indian, Continental..."
+                          className="rounded-sm border-gray-300 focus:border-green-500 focus:ring-green-500"
+                        />
+                      </div>
+                    )}
+
+                    <Button type="submit" className="w-full btn-chef mt-6">
+                      CONTINUE
+                      <ChevronRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </form>
+                </>
+              )}
 
             {step === 'addresses' && (
-              <form onSubmit={handleFinalSubmit} className="space-y-4">
+              <form onSubmit={handleFinalSubmit} className="space-y-5">
                 <AddressForm 
                   address={homeAddress} 
                   setAddress={setHomeAddress} 
-                  title="Home Address" 
+                  title="HOME ADDRESS" 
                   icon={Home} 
                 />
                 
                 <AddressForm 
                   address={workAddress} 
                   setAddress={setWorkAddress} 
-                  title="Work Address" 
+                  title="WORK ADDRESS" 
                   icon={Briefcase} 
                 />
 
-                <p className="text-xs text-muted-foreground text-center">
-                  You can switch between these addresses daily until 8 PM
+                <p className="text-xs text-muted-foreground text-center font-chef tracking-wider">
+                  SWITCH BETWEEN ADDRESSES DAILY UNTIL 8 PM
                 </p>
 
-                <div className="flex gap-3">
-                  <Button type="button" variant="outline" onClick={() => setStep('basic')} className="flex-1">
+                <div className="flex gap-3 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setStep('basic')} className="flex-1 font-chef tracking-wider text-xs">
                     <ChevronLeft className="w-4 h-4 mr-2" />
-                    Back
+                    BACK
                   </Button>
-                  <Button type="submit" className="flex-1 gradient-primary" disabled={isLoading}>
-                    {isLoading ? 'Creating...' : 'Create Account'}
+                  <Button type="submit" className="flex-1 btn-green" disabled={isLoading}>
+                    {isLoading ? 'CREATING...' : 'CREATE ACCOUNT'}
                   </Button>
                 </div>
               </form>
             )}
 
             {step === 'kitchen' && (
-              <form onSubmit={handleFinalSubmit} className="space-y-4">
+              <form onSubmit={handleFinalSubmit} className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="bio">Bio (optional)</Label>
+                  <Label htmlFor="bio" className="font-chef text-xs tracking-wider text-charcoal">BIO (OPTIONAL)</Label>
                   <Input
                     id="bio"
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
                     placeholder="Tell customers about yourself..."
+                    className="rounded-sm border-gray-300 focus:border-green-500 focus:ring-green-500"
                   />
                 </div>
 
-                <div className="space-y-3 p-4 rounded-xl bg-secondary/50">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <MapPin className="w-4 h-4 text-primary" />
-                    Kitchen Location
+                <div className="space-y-3 p-5 rounded-sm bg-secondary border border-gray-200">
+                  <div className="flex items-center gap-2 font-chef text-xs tracking-wider text-charcoal">
+                    <MapPin className="w-4 h-4 text-green-500" />
+                    KITCHEN LOCATION
                   </div>
                   <Input
                     placeholder="Street address"
                     value={kitchenLocation.street}
                     onChange={(e) => setKitchenLocation({ ...kitchenLocation, street: e.target.value })}
                     type="text"
+                    className="rounded-sm border-gray-300 focus:border-green-500 focus:ring-green-500"
                   />
                   <div className="grid grid-cols-2 gap-2">
                     <Input
@@ -347,12 +366,14 @@ export const Register = () => {
                       value={kitchenLocation.city}
                       onChange={(e) => setKitchenLocation({ ...kitchenLocation, city: e.target.value })}
                       type="text"
+                      className="rounded-sm border-gray-300 focus:border-green-500 focus:ring-green-500"
                     />
                     <Input
                       placeholder="State"
                       value={kitchenLocation.state}
                       onChange={(e) => setKitchenLocation({ ...kitchenLocation, state: e.target.value })}
                       type="text"
+                      className="rounded-sm border-gray-300 focus:border-green-500 focus:ring-green-500"
                     />
                   </div>
                   <Input
@@ -360,31 +381,33 @@ export const Register = () => {
                     value={kitchenLocation.zipCode}
                     onChange={(e) => setKitchenLocation({ ...kitchenLocation, zipCode: e.target.value })}
                     type="text"
+                    className="rounded-sm border-gray-300 focus:border-green-500 focus:ring-green-500"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="serviceArea">Service Area</Label>
+                  <Label htmlFor="serviceArea" className="font-chef text-xs tracking-wider text-charcoal">SERVICE AREA</Label>
                   <Input
                     id="serviceArea"
                     value={serviceArea}
                     onChange={(e) => setServiceArea(e.target.value)}
                     placeholder="e.g., Koramangala, HSR Layout, Indiranagar"
+                    className="rounded-sm border-gray-300 focus:border-green-500 focus:ring-green-500"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Delivery Slots</Label>
-                  <div className="flex gap-2">
+                  <Label className="font-chef text-xs tracking-wider text-charcoal">DELIVERY SLOTS</Label>
+                  <div className="flex gap-0 border border-gray-200 rounded-sm overflow-hidden">
                     {['lunch', 'dinner'].map((slot) => (
                       <button
                         key={slot}
                         type="button"
                         onClick={() => toggleDeliverySlot(slot)}
-                        className={`flex-1 py-2 px-4 rounded-lg border text-sm font-medium capitalize transition-all ${
+                        className={`flex-1 py-3 font-chef text-xs tracking-wider uppercase transition-all ${
                           deliverySlots.includes(slot)
-                            ? 'border-primary bg-primary text-primary-foreground'
-                            : 'border-border hover:border-primary'
+                            ? 'bg-charcoal text-white'
+                            : 'bg-white text-charcoal hover:bg-gray-50'
                         }`}
                       >
                         {slot}
@@ -393,27 +416,30 @@ export const Register = () => {
                   </div>
                 </div>
 
-                <div className="flex gap-3">
-                  <Button type="button" variant="outline" onClick={() => setStep('basic')} className="flex-1">
+                <div className="flex gap-3 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setStep('basic')} className="flex-1 font-chef tracking-wider text-xs">
                     <ChevronLeft className="w-4 h-4 mr-2" />
-                    Back
+                    BACK
                   </Button>
-                  <Button type="submit" className="flex-1 gradient-primary" disabled={isLoading}>
-                    {isLoading ? 'Submitting...' : 'Complete Registration'}
+                  <Button type="submit" className="flex-1 btn-green" disabled={isLoading}>
+                    {isLoading ? 'SUBMITTING...' : 'COMPLETE REGISTRATION'}
                   </Button>
                 </div>
               </form>
             )}
 
-            <p className="mt-6 text-center text-sm text-muted-foreground">
-              Already have an account?{' '}
-              <Link to="/login" className="text-primary hover:underline font-medium">
-                Sign in
-              </Link>
-            </p>
+            <div className="mt-6 pt-6 border-t border-gray-200 text-center">
+              <p className="text-sm text-muted-foreground">
+                Already have an account?{' '}
+                <Link to="/login" className="text-green-500 hover:text-green-500-dark font-medium">
+                  Sign in
+                </Link>
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>
-    </Layout>
-  );
+    </div>
+  </Layout>
+);
 };

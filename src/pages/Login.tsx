@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, LogIn } from 'lucide-react';
+import { Eye, EyeOff, LogIn, UtensilsCrossed } from 'lucide-react';
 
 export const Login = () => {
   const [email, setEmail] = useState('');
@@ -23,6 +23,9 @@ export const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+
+    // Slight delay to show loading animation
+    await new Promise(resolve => setTimeout(resolve, 800));
 
     try {
       const response = api.login(email, password);
@@ -40,70 +43,87 @@ export const Login = () => {
 
   return (
     <Layout>
-      <div className="container max-w-lg py-12 px-4">
-        <Card className="animate-fade-in shadow-elevated">
-          <CardHeader className="text-center">
-            <CardTitle className="font-display text-2xl">Welcome Back</CardTitle>
-            <CardDescription>Sign in to your ZYNK account</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="john@example.com"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
+      <div className="min-h-[80vh] flex items-center justify-center bg-gradient-to-b from-secondary to-background py-12 px-4">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <p className="font-chef text-xs tracking-widest text-green-500 mb-4">WELCOME BACK</p>
+            <h1 className="font-display text-3xl font-bold text-charcoal">Sign In</h1>
+            <div className="w-12 h-0.5 bg-charcoal mx-auto mt-4" />
+          </div>
+          
+          <Card className="chef-card border border-gray-200 shadow-kitchen">
+            <CardContent className="pt-8 pb-6">
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="font-chef text-xs tracking-wider text-charcoal">EMAIL</Label>
                   <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="john@example.com"
                     required
+                    className="rounded-sm border-gray-300 focus:border-green-500 focus:ring-green-500"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="font-chef text-xs tracking-wider text-charcoal">PASSWORD</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      required
+                      className="rounded-sm border-gray-300 focus:border-green-500 focus:ring-green-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-charcoal"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <Button type="submit" className="w-full btn-chef mt-6" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <UtensilsCrossed className="w-4 h-4 mr-2 animate-spin" />
+                      PREPARING...
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="w-4 h-4 mr-2" />
+                      SIGN IN
+                    </>
+                  )}
+                </Button>
+              </form>
+
+              {/* Demo credentials */}
+              <div className="mt-8 p-4 bg-secondary rounded-sm border border-gray-200">
+                <p className="font-chef text-[10px] tracking-widest text-muted-foreground mb-3">DEMO CREDENTIALS</p>
+                <div className="space-y-2 text-sm">
+                  <p><span className="text-charcoal font-medium">Admin:</span> <span className="text-muted-foreground">admin@zynk.com / admin123</span></p>
+                  <p><span className="text-charcoal font-medium">Delivery:</span> <span className="text-muted-foreground">delivery@zynk.com / delivery123</span></p>
                 </div>
               </div>
 
-              <Button type="submit" className="w-full gradient-primary" disabled={isLoading}>
-                <LogIn className="w-4 h-4 mr-2" />
-                {isLoading ? 'Signing in...' : 'Sign In'}
-              </Button>
-            </form>
-
-            {/* Demo credentials */}
-            <div className="mt-6 p-4 bg-secondary rounded-lg">
-              <p className="text-xs font-medium text-muted-foreground mb-2">Demo Credentials:</p>
-              <div className="space-y-1 text-xs">
-                <p><span className="text-foreground font-medium">Admin:</span> admin@zynk.com / admin123</p>
-                <p><span className="text-foreground font-medium">Delivery:</span> delivery@zynk.com / delivery123</p>
+              <div className="mt-6 pt-6 border-t border-gray-200 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Don't have an account?{' '}
+                  <Link to="/register" className="text-green-500 hover:text-green-500-dark font-medium">
+                    Create one
+                  </Link>
+                </p>
               </div>
-            </div>
-
-            <p className="mt-6 text-center text-sm text-muted-foreground">
-              Don't have an account?{' '}
-              <Link to="/register" className="text-primary hover:underline font-medium">
-                Create one
-              </Link>
-            </p>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </Layout>
   );

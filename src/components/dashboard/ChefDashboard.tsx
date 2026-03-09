@@ -214,59 +214,91 @@ export const ChefDashboard = () => {
 
   // Main Dashboard (approved chef)
   return (
-    <div className="container py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-chef/10 border border-chef/20 flex items-center justify-center">
-            <ChefHat className="w-7 h-7 text-chef" />
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Animated Kitchen Background */}
+      <div className="fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, #faf9f7 0%, #f5f3f0 50%, #f0ede8 100%)' }} />
+        
+        {/* Floating shapes */}
+        <div className="absolute top-32 right-20 w-56 h-56 rounded-full opacity-25 animate-float" style={{ background: 'radial-gradient(circle, rgba(184,115,51,0.2) 0%, transparent 70%)' }} />
+        <div className="absolute bottom-40 left-10 w-64 h-64 rounded-full opacity-20 animate-float-slow" style={{ background: 'radial-gradient(circle, rgba(139,90,43,0.15) 0%, transparent 70%)' }} />
+        <div className="absolute top-1/2 left-1/3 w-48 h-48 rounded-full opacity-15 animate-float-delayed" style={{ background: 'radial-gradient(circle, rgba(184,115,51,0.18) 0%, transparent 70%)' }} />
+        
+        {/* Pattern */}
+        <div className="absolute inset-0 opacity-[0.03]" style={{
+          backgroundImage: 'radial-gradient(circle at 2px 2px, #1a1a1a 1px, transparent 0)',
+          backgroundSize: '32px 32px'
+        }} />
+        
+        {/* Decorative icons */}
+        <div className="absolute bottom-1/4 right-8 opacity-[0.04] animate-float">
+          <ChefHat className="w-24 h-24 text-green-900" />
+        </div>
+        
+        {/* Animated lines */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-green-500/20 to-transparent" style={{ animation: 'shimmer 4s infinite' }} />
+      </div>
+
+      <div className="container py-8 px-4 relative z-10">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center gap-4 mb-8 animate-slide-up">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 flex items-center justify-center shadow-xl">
+              <ChefHat className="w-7 h-7 text-green-400" />
+            </div>
+            <div>
+              <h1 className="font-display text-3xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">Your Kitchen</h1>
+              <p className="text-muted-foreground flex items-center gap-2">
+                <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                Welcome back, Chef {user?.name}
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="font-display text-3xl font-bold">Your Kitchen</h1>
-            <p className="text-muted-foreground">Welcome back, Chef {user?.name}</p>
+
+          {/* Finalization Banner */}
+          <div className={`mb-6 p-4 rounded-2xl flex items-center gap-3 animate-slide-up backdrop-blur-sm ${canModify ? 'bg-green-50/80 border border-green-200' : 'bg-white/60 border border-gray-200'}`} style={{ animationDelay: '100ms' }}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${canModify ? 'bg-green-500' : 'bg-gray-400'}`}>
+              <Clock className="w-5 h-5 text-white" />
+            </div>
+            <p className={canModify ? 'text-green-800 font-medium' : 'text-gray-600'}>
+              {canModify ? 'Tomorrow\'s prep list is ready! Time to cook.' : 'Orders still coming in. Final list after 8 PM.'}
+            </p>
           </div>
-        </div>
 
-        {/* Finalization Banner */}
-        <div className={`mb-6 p-4 rounded-2xl flex items-center gap-3 ${canModify ? 'bg-primary/5 border border-primary/20' : 'bg-muted/80 border border-border/50'}`}>
-          <Clock className={`w-5 h-5 ${canModify ? 'text-primary' : 'text-muted-foreground'}`} />
-          <p className={canModify ? 'text-primary' : 'text-foreground'}>
-            {canModify ? 'Tomorrow\'s prep list is ready! Time to cook.' : 'Orders still coming in. Final list after 8 PM.'}
-          </p>
-        </div>
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <Card className="shadow-soft bg-white/80 backdrop-blur-sm animate-slide-up hover-lift" style={{ animationDelay: '150ms' }}>
+              <CardContent className="pt-6">
+                <p className="text-3xl font-bold text-green-600">{orders.length}</p>
+                <p className="text-sm text-muted-foreground">Tomorrow's Orders</p>
+              </CardContent>
+            </Card>
+            <Card className="shadow-soft bg-white/80 backdrop-blur-sm animate-slide-up hover-lift" style={{ animationDelay: '200ms' }}>
+              <CardContent className="pt-6">
+                <p className="text-3xl font-bold text-gray-500">{orders.filter(o => o.status === 'pending').length}</p>
+                <p className="text-sm text-muted-foreground">Waiting</p>
+              </CardContent>
+            </Card>
+            <Card className="shadow-soft bg-white/80 backdrop-blur-sm animate-slide-up hover-lift" style={{ animationDelay: '250ms' }}>
+              <CardContent className="pt-6">
+                <p className="text-3xl font-bold text-blue-500">{orders.filter(o => o.status === 'preparing').length}</p>
+                <p className="text-sm text-muted-foreground">Cooking</p>
+              </CardContent>
+            </Card>
+            <Card className="shadow-soft bg-white/80 backdrop-blur-sm animate-slide-up hover-lift" style={{ animationDelay: '300ms' }}>
+              <CardContent className="pt-6">
+                <p className="text-3xl font-bold text-green-500">{orders.filter(o => o.status === 'ready').length}</p>
+                <p className="text-sm text-muted-foreground">Ready for Pickup</p>
+              </CardContent>
+            </Card>
+          </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <Card className="shadow-soft">
-            <CardContent className="pt-6">
-              <p className="text-3xl font-bold text-chef">{orders.length}</p>
-              <p className="text-sm text-muted-foreground">Tomorrow's Orders</p>
-            </CardContent>
-          </Card>
-          <Card className="shadow-soft">
-            <CardContent className="pt-6">
-              <p className="text-3xl font-bold text-muted-foreground">{orders.filter(o => o.status === 'pending').length}</p>
-              <p className="text-sm text-muted-foreground">Waiting</p>
-            </CardContent>
-          </Card>
-          <Card className="shadow-soft">
-            <CardContent className="pt-6">
-              <p className="text-3xl font-bold text-info">{orders.filter(o => o.status === 'preparing').length}</p>
-              <p className="text-sm text-muted-foreground">Cooking</p>
-            </CardContent>
-          </Card>
-          <Card className="shadow-soft">
-            <CardContent className="pt-6">
-              <p className="text-3xl font-bold text-primary">{orders.filter(o => o.status === 'ready').length}</p>
-              <p className="text-sm text-muted-foreground">Ready for Pickup</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Orders List */}
-        <Card className="shadow-soft mb-6">
-          <CardHeader>
-            <CardTitle className="font-display flex items-center gap-2">
-              <Clock className="w-5 h-5 text-primary" />
+          {/* Orders List */}
+          <Card className="shadow-soft mb-6 bg-white/80 backdrop-blur-sm animate-slide-up" style={{ animationDelay: '350ms' }}>
+            <CardHeader>
+              <CardTitle className="font-display flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
+                  <Clock className="w-4 h-4 text-white" />
+              </div>
               Tomorrow's Prep List
             </CardTitle>
             <CardDescription>Orders confirmed after evening cutoff</CardDescription>
@@ -331,11 +363,14 @@ export const ChefDashboard = () => {
         </Card>
 
         {/* Dish Management */}
-        <Card className="shadow-card">
+        <Card className="shadow-card bg-white/80 backdrop-blur-sm animate-slide-up" style={{ animationDelay: '400ms' }}>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="font-display">Your Dishes</CardTitle>
-              <Button onClick={() => setShowAddDish(true)} size="sm">
+              <CardTitle className="font-display flex items-center gap-2">
+                <span className="text-green-500">🍳</span>
+                Your Dishes
+              </CardTitle>
+              <Button onClick={() => setShowAddDish(true)} size="sm" className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600">
                 <Plus className="w-4 h-4 mr-2" />Add Dish
               </Button>
             </div>
@@ -348,16 +383,17 @@ export const ChefDashboard = () => {
             </div>
           </CardContent>
         </Card>
+        </div>
       </div>
     </div>
   );
 };
 
 const DishCard = ({ dish }: { dish: Dish }) => (
-  <div className="p-4 rounded-2xl bg-secondary/50 border border-border/30 flex items-center justify-between">
+  <div className="p-4 rounded-2xl bg-gradient-to-r from-green-50/50 to-emerald-50/30 border border-green-100 flex items-center justify-between hover:shadow-md transition-all">
     <div className="flex items-center gap-4">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${dish.category === 'veg' ? 'bg-primary/10' : 'bg-destructive/10'}`}>
-        {dish.category === 'veg' ? <Leaf className="w-5 h-5 text-primary" /> : <Drumstick className="w-5 h-5 text-destructive" />}
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${dish.category === 'veg' ? 'bg-green-500' : 'bg-red-500'}`}>
+        {dish.category === 'veg' ? <Leaf className="w-5 h-5 text-white" /> : <Drumstick className="w-5 h-5 text-white" />}
       </div>
       <div>
         <h3 className="font-medium">{dish.name}</h3>

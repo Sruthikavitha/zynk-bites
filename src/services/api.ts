@@ -1605,7 +1605,7 @@ export const toggleDishSpecial = (
     return { success: false, error: 'Dish not found or not owned by this chef' };
   }
 
-  const updated = db.updateDish(dishId, { isSpecial } as any);
+  const updated = db.updateDish(dishId, { isSpecial });
   return { 
     success: true, 
     data: updated!, 
@@ -1646,10 +1646,10 @@ export const getMealRecommendations = (
       data: recommendation,
       message: 'Meal recommendations generated successfully',
     };
-  } catch (error: any) {
+  } catch (error) {
     return {
       success: false,
-      error: error.message || 'Failed to generate meal recommendations',
+      error: error instanceof Error ? error.message : 'Failed to generate meal recommendations',
     };
   }
 };

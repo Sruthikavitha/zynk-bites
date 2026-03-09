@@ -71,8 +71,8 @@ export const ChefDetail = () => {
     );
   };
 
-  const specialDishes = dishes.filter(d => (d as any).isSpecial);
-  const regularDishes = dishes.filter(d => !(d as any).isSpecial);
+  const specialDishes = dishes.filter(d => d.isSpecial);
+  const regularDishes = dishes.filter(d => !d.isSpecial);
   const vegDishes = dishes.filter(d => d.category === 'veg');
   const nonVegDishes = dishes.filter(d => d.category === 'non-veg');
 
