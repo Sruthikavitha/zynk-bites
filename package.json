@@ -1,0 +1,19 @@
+{
+  "name": "zynk-bites-monorepo",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Zynk Bites - Meal recommendation platform",
+  "scripts": {
+    "dev": "cd zynk-bites && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "build": "cd zynk-bites && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "test": "cd zynk-bites && npm run test",
+    "test:watch": "cd zynk-bites && npm run test:watch",
+    "lint": "cd zynk-bites && npm run lint"
+  },
+  "workspaces": [
+    "zynk-bites",
+    "backend"
+  ]
+}
