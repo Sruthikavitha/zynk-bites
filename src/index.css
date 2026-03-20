@@ -11,9 +11,9 @@
 
 @layer base {
   :root {
-    /* Core Colors - Clean & Professional */
-    --background: 0 0% 98%;
-    --foreground: 0 0% 12%;
+    /* Core Colors - Green and White */
+    --background: 0 0% 100%;
+    --foreground: 210 15% 12%;
 
     /* Cards - Subtle Gray Tones */
     --card: 0 0% 100%;
@@ -22,29 +22,29 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 12%;
 
-    /* Primary - Charcoal Black */
-    --primary: 0 0% 18%;
+    /* Primary - ZYNK Green */
+    --primary: 145 63% 45%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Light Steel */
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 18%;
+    /* Secondary - Light Green Tint */
+    --secondary: 145 45% 96%;
+    --secondary-foreground: 210 15% 12%;
 
-    /* Muted - Soft Grays */
-    --muted: 0 0% 94%;
-    --muted-foreground: 0 0% 45%;
+    /* Muted - Soft Gray */
+    --muted: 210 20% 95%;
+    --muted-foreground: 210 10% 45%;
 
-    /* Accent - Fresh Green for kitchen theme */
-    --accent: 142 70% 45%;
+    /* Accent - Green */
+    --accent: 145 63% 49%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
     /* Borders - Clean lines */
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 0 0% 18%;
+    --border: 210 20% 90%;
+    --input: 210 20% 90%;
+    --ring: 145 63% 45%;
 
     --radius: 0.5rem;
 
@@ -64,7 +64,7 @@
     --admin: 0 0% 25%;
     --admin-foreground: 0 0% 100%;
 
-    --health: 142 70% 45%;
+    --health: 145 63% 45%;
     --health-foreground: 0 0% 100%;
 
     /* Steel/Metallic accents */
@@ -132,6 +132,32 @@
 }
 
 @layer utilities {
+  /* Global UI styles */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-card transition-all hover:shadow-card-hover;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-emerald-200 bg-white px-6 py-3 text-sm font-semibold text-emerald-700 transition-all hover:border-emerald-300 hover:bg-emerald-50;
+  }
+
+  .card-base {
+    @apply rounded-2xl border border-emerald-100 bg-white shadow-soft;
+  }
+
+  .shadow-soft {
+    @apply shadow-card;
+  }
+
+  .section-title {
+    @apply font-display text-3xl md:text-4xl font-semibold text-slate-900;
+  }
+
+  .skeleton {
+    @apply animate-shimmer bg-gradient-to-r from-slate-100 via-slate-200 to-slate-100;
+    background-size: 200% 100%;
+  }
+
   /* ═══════════════════════════════════════════════════════════════════════════
      🍽️ MODERN CHEF'S KITCHEN - UTILITY CLASSES
      ═══════════════════════════════════════════════════════════════════════════ */
@@ -720,6 +746,18 @@
     opacity: 0;
     transform: translateY(-20px);
   }
+}
+
+@keyframes confettiFall {
+  0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(220px) rotate(360deg); opacity: 0; }
+}
+
+.confetti-piece {
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  animation: confettiFall 1.8s ease-in-out infinite;
 }
 
 /* Animation utility classes for loaders */

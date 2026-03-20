@@ -4,6 +4,7 @@ import {
   getSubscriptions,
   getSubscription,
   updateAddress,
+  updateChefSelection,
   skipMeal,
   swapMeal,
   pauseSub,
@@ -37,6 +38,9 @@ router.get('/:id', getSubscription);
 
 // Update subscription address (locked after 8 PM Friday) with validation
 router.put('/:id/address', validateRequest(updateAddressSchema), updateAddress);
+
+// Update selected chef
+router.put('/:id/chef', updateChefSelection);
 
 // Skip next week's meal (locked after 8 PM Friday)
 router.post('/:id/skip', skipMeal);

@@ -1,7 +1,25 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import * as api from '@/services/api';
+import {
+  getApiToken,
+  getSubscriptions,
+  getChefsWithRatings,
+  getAllDishes,
+  getAllMeals,
+  updateSubscriptionChef,
+  getCustomerMeals,
+  skipCustomerMeal,
+  unskipCustomerMeal,
+  swapCustomerMeal,
+  updateCustomerMealAddress,
+  getOrdersForReview,
+  getCustomerOrdersWithTracking,
+  submitCustomerReview,
+  type BackendSubscription,
+} from '@/services/backend';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -59,32 +77,32 @@ const CutoffBanner = () => {
 
   if (status === 'LOCKED') {
     return (
-      <div className="mb-6 p-4 rounded-2xl bg-muted/80 border border-border/50 flex items-center gap-3 animate-slide-up">
-        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-          <Lock className="w-5 h-5 text-muted-foreground" />
+      <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 flex items-center gap-3 animate-slide-up">
+        <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center border border-slate-200">
+          <Lock className="w-5 h-5 text-slate-400" />
         </div>
         <div>
-          <p className="font-medium text-foreground">Tomorrow's meal is in the oven</p>
-          <p className="text-sm text-muted-foreground">Changes will apply from day after</p>
+          <p className="font-medium text-slate-700">Tomorrow's meal is locked</p>
+          <p className="text-sm text-slate-500">Changes reopen Monday 8 AM.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="mb-6 p-4 rounded-2xl bg-primary/5 border border-primary/20 flex items-center justify-between animate-slide-up">
+    <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 flex items-center justify-between animate-slide-up">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-          <Clock className="w-5 h-5 text-primary" />
+        <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center border border-emerald-200">
+          <Clock className="w-5 h-5 text-emerald-600" />
         </div>
         <div>
-          <p className="font-medium text-primary">Kitchen is still open</p>
-          <p className="text-sm text-muted-foreground">You can still adjust tomorrow's meal</p>
+          <p className="font-medium text-emerald-700">Kitchen is still open</p>
+          <p className="text-sm text-slate-500">You can still adjust tomorrow's meal</p>
         </div>
       </div>
       <div className="text-right">
-        <p className="text-xs text-muted-foreground uppercase tracking-wide">Closes in</p>
-        <p className="font-mono text-xl font-bold text-primary">{timeLeft}</p>
+        <p className="text-xs text-slate-500 uppercase tracking-wide">Closes in</p>
+        <p className="font-mono text-xl font-bold text-emerald-700">{timeLeft}</p>
       </div>
     </div>
   );
@@ -92,6 +110,7 @@ const CutoffBanner = () => {
 
 export const CustomerDashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [dailyMeals, setDailyMeals] = useState<DailyMeal[]>([]);
@@ -112,37 +131,139 @@ export const CustomerDashboard = () => {
   const customer = user as Customer;
 
   useEffect(() => {
-    if (user) loadData();
+    if (user) void loadData();
     const interval = setInterval(() => setCanModify(api.canModifyMeal()), 1000);
     return () => clearInterval(interval);
   }, [user]);
 
-  const loadData = () => {
+  const mapBackendPlan = (planName: string): PlanType => {
+    const normalized = planName?.toLowerCase() || '';
+    if (normalized.includes('basic')) return 'basic';
+    if (normalized.includes('premium')) return 'premium';
+    return 'standard';
+  };
+
+  const getMealSlotsForPlan = (planType?: PlanType): MealSlot[] => {
+    switch (planType) {
+      case 'basic':
+        return ['lunch'];
+      case 'standard':
+        return ['lunch', 'dinner'];
+      case 'premium':
+        return ['breakfast', 'lunch', 'dinner'];
+      default:
+        return ['lunch'];
+    }
+  };
+
+  const buildSubscriptionFromBackend = (sub: BackendSubscription): Subscription => {
+    const mappedPlan = mapBackendPlan(sub.planName);
+    return {
+      id: String(sub.id),
+      customerId: user?.id || '',
+      plan: mappedPlan,
+      mealTime: mappedPlan === 'basic' ? 'lunch' : 'both',
+      mealSlots: getMealSlotsForPlan(mappedPlan),
+      startDate: new Date().toISOString(),
+      status: (sub.status as Subscription['status']) || 'active',
+      address: {
+        street: sub.deliveryAddress,
+        city: sub.city,
+        state: '',
+        zipCode: sub.postalCode,
+      },
+      activeAddressType: 'home',
+      selectedChefId: sub.chefId ? String(sub.chefId) : undefined,
+    };
+  };
+
+  const loadData = async () => {
     if (!user) return;
-    
-    const subResponse = api.getSubscription(user.id);
-    if (subResponse.success) setSubscription(subResponse.data || null);
 
-    const mealsResponse = api.getCustomerMeals(user.id);
-    if (mealsResponse.success) setDailyMeals(mealsResponse.data || []);
+    const token = getApiToken();
+    let backendSub: Subscription | null = null;
+    if (token) {
+      const subs = await getSubscriptions(token);
+      const active = subs?.find((s) => s.status === 'active') || subs?.[0];
+      if (active) {
+        backendSub = buildSubscriptionFromBackend(active);
+      }
+    }
 
-    const allMealsResponse = api.getAllMeals();
-    if (allMealsResponse.success) setAllMeals(allMealsResponse.data || []);
+    if (backendSub) {
+      setSubscription(backendSub);
+    } else {
+      const subResponse = api.getSubscription(user.id);
+      if (subResponse.success) setSubscription(subResponse.data || null);
+    }
 
-    const dishesResponse = api.getAllDishes();
-    if (dishesResponse.success) setAllDishes(dishesResponse.data || []);
+    let backendDailyMeals: DailyMeal[] | null = null;
+    if (token) {
+      backendDailyMeals = await getCustomerMeals(token);
+    }
+    if (backendDailyMeals) {
+      setDailyMeals(backendDailyMeals);
+    } else {
+      const mealsResponse = api.getCustomerMeals(user.id);
+      if (mealsResponse.success) setDailyMeals(mealsResponse.data || []);
+    }
 
-    const chefsResponse = api.getApprovedChefs();
-    if (chefsResponse.success) setAvailableChefs(chefsResponse.data || []);
+    const backendMeals = await getAllMeals();
+    if (backendMeals) {
+      setAllMeals(backendMeals as Meal[]);
+    } else {
+      const allMealsResponse = api.getAllMeals();
+      if (allMealsResponse.success) setAllMeals(allMealsResponse.data || []);
+    }
 
-    const chefResponse = api.getSelectedChef(user.id);
-    if (chefResponse.success) setSelectedChef(chefResponse.data || null);
+    const backendDishes = await getAllDishes();
+    if (backendDishes) {
+      setAllDishes(backendDishes as Dish[]);
+    } else {
+      const dishesResponse = api.getAllDishes();
+      if (dishesResponse.success) setAllDishes(dishesResponse.data || []);
+    }
 
-    const reviewOrdersResponse = api.getOrdersForReview(user.id);
-    if (reviewOrdersResponse.success) setOrdersForReview(reviewOrdersResponse.data || []);
+    const backendChefs = await getChefsWithRatings();
+    if (backendChefs) {
+      setAvailableChefs(backendChefs as Chef[]);
+      const chefIdToFind = backendSub?.selectedChefId;
+      if (chefIdToFind) {
+        setSelectedChef((backendChefs as Chef[]).find((chef) => chef.id === chefIdToFind) || null);
+      } else {
+        setSelectedChef(null);
+      }
+    } else {
+      const chefsResponse = api.getApprovedChefs();
+      if (chefsResponse.success) setAvailableChefs(chefsResponse.data || []);
 
-    const trackingResponse = api.getCustomerOrdersWithTracking(user.id);
-    if (trackingResponse.success) setCustomerOrders(trackingResponse.data || []);
+      const chefResponse = api.getSelectedChef(user.id);
+      if (chefResponse.success) setSelectedChef(chefResponse.data || null);
+    }
+
+    if (token) {
+      const backendReviewOrders = await getOrdersForReview(token);
+      if (backendReviewOrders) {
+        setOrdersForReview(backendReviewOrders as Order[]);
+      } else {
+        const reviewOrdersResponse = api.getOrdersForReview(user.id);
+        if (reviewOrdersResponse.success) setOrdersForReview(reviewOrdersResponse.data || []);
+      }
+
+      const backendTracking = await getCustomerOrdersWithTracking(token);
+      if (backendTracking) {
+        setCustomerOrders(backendTracking as Order[]);
+      } else {
+        const trackingResponse = api.getCustomerOrdersWithTracking(user.id);
+        if (trackingResponse.success) setCustomerOrders(trackingResponse.data || []);
+      }
+    } else {
+      const reviewOrdersResponse = api.getOrdersForReview(user.id);
+      if (reviewOrdersResponse.success) setOrdersForReview(reviewOrdersResponse.data || []);
+
+      const trackingResponse = api.getCustomerOrdersWithTracking(user.id);
+      if (trackingResponse.success) setCustomerOrders(trackingResponse.data || []);
+    }
 
     setCanModify(api.canModifyMeal());
   };
@@ -150,18 +271,37 @@ export const CustomerDashboard = () => {
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    const response = api.subscribe(user.id, plan, address, 'home', selectedChefId || undefined);
-    if (response.success) {
-      toast({ title: 'Subscribed!', description: 'Your meal subscription is now active.' });
-      setShowSubscribe(false);
-      loadData();
-    } else {
-      toast({ title: 'Error', description: response.error, variant: 'destructive' });
+    if (!selectedChefId) {
+      toast({ title: 'Select a chef', description: 'Choose a chef before continuing.', variant: 'destructive' });
+      return;
     }
+    toast({ title: 'Almost there', description: 'Continue to payment to activate your plan.' });
+    setShowSubscribe(false);
+    navigate('/subscribe', {
+      state: {
+        selectedChefId,
+        selectedPlan: plan,
+        homeAddress: address,
+      },
+    });
   };
 
-  const handleSkipMeal = (dailyMealId: string) => {
+  const handleSkipMeal = async (dailyMealId: string) => {
     if (!user) return;
+    const token = getApiToken();
+    if (token) {
+      const response = await skipCustomerMeal(token, dailyMealId);
+      if (response.success) {
+        toast({ title: 'Meal Skipped', description: 'This meal has been skipped.' });
+        void loadData();
+      } else {
+        const nextAt = response.nextAvailableAt ? format(new Date(response.nextAvailableAt), 'EEE, MMM d h:mm a') : undefined;
+        const description = nextAt ? `${response.message} Next available: ${nextAt}.` : response.message;
+        toast({ title: response.nextAvailableAt ? 'Locked' : 'Error', description, variant: 'destructive' });
+      }
+      return;
+    }
+
     const response = api.skipMeal(user.id, dailyMealId);
     if (response.success) {
       toast({ title: 'Meal Skipped', description: 'This meal has been skipped.' });
@@ -173,8 +313,22 @@ export const CustomerDashboard = () => {
     }
   };
 
-  const handleUnskipMeal = (dailyMealId: string) => {
+  const handleUnskipMeal = async (dailyMealId: string) => {
     if (!user) return;
+    const token = getApiToken();
+    if (token) {
+      const response = await unskipCustomerMeal(token, dailyMealId);
+      if (response.success) {
+        toast({ title: 'Meal Restored', description: 'This meal has been restored.' });
+        void loadData();
+      } else {
+        const nextAt = response.nextAvailableAt ? format(new Date(response.nextAvailableAt), 'EEE, MMM d h:mm a') : undefined;
+        const description = nextAt ? `${response.message} Next available: ${nextAt}.` : response.message;
+        toast({ title: response.nextAvailableAt ? 'Locked' : 'Error', description, variant: 'destructive' });
+      }
+      return;
+    }
+
     const response = api.unskipMeal(user.id, dailyMealId);
     if (response.success) {
       toast({ title: 'Meal Restored', description: 'This meal has been restored.' });
@@ -186,8 +340,22 @@ export const CustomerDashboard = () => {
     }
   };
 
-  const handleSwapMeal = (dailyMealId: string, newMealId: string) => {
+  const handleSwapMeal = async (dailyMealId: string, newMealId: string) => {
     if (!user) return;
+    const token = getApiToken();
+    if (token) {
+      const response = await swapCustomerMeal(token, dailyMealId, newMealId);
+      if (response.success) {
+        toast({ title: 'Meal Swapped', description: 'This meal has been updated.' });
+        void loadData();
+      } else {
+        const nextAt = response.nextAvailableAt ? format(new Date(response.nextAvailableAt), 'EEE, MMM d h:mm a') : undefined;
+        const description = nextAt ? `${response.message} Next available: ${nextAt}.` : response.message;
+        toast({ title: response.nextAvailableAt ? 'Locked' : 'Error', description, variant: 'destructive' });
+      }
+      return;
+    }
+
     const response = api.swapMeal(user.id, dailyMealId, newMealId);
     if (response.success) {
       toast({ title: 'Meal Swapped', description: 'This meal has been updated.' });
@@ -199,12 +367,26 @@ export const CustomerDashboard = () => {
     }
   };
 
-  const handleUpdateMealAddress = (
+  const handleUpdateMealAddress = async (
     dailyMealId: string,
     addressType: AddressType | 'custom',
     customAddress?: Address
   ) => {
     if (!user) return;
+    const token = getApiToken();
+    if (token) {
+      const response = await updateCustomerMealAddress(token, dailyMealId, addressType, customAddress);
+      if (response.success) {
+        toast({ title: 'Address Updated', description: 'Delivery address updated for this meal.' });
+        void loadData();
+      } else {
+        const nextAt = response.nextAvailableAt ? format(new Date(response.nextAvailableAt), 'EEE, MMM d h:mm a') : undefined;
+        const description = nextAt ? `${response.message} Next available: ${nextAt}.` : response.message;
+        toast({ title: response.nextAvailableAt ? 'Locked' : 'Error', description, variant: 'destructive' });
+      }
+      return;
+    }
+
     const response = api.updateMealAddress(user.id, dailyMealId, addressType, customAddress);
     if (response.success) {
       toast({ title: 'Address Updated', description: 'Delivery address updated for this meal.' });
@@ -216,20 +398,45 @@ export const CustomerDashboard = () => {
     }
   };
 
-  const handleSelectChef = (chefId: string) => {
+  const handleSelectChef = async (chefId: string) => {
     if (!user) return;
+    const token = getApiToken();
+    if (token && subscription?.id) {
+      const response = await updateSubscriptionChef(token, subscription.id, chefId);
+      if (response.success) {
+        toast({ title: 'Chef Updated', description: 'Your chef has been changed.' });
+        setShowChefSelect(false);
+        void loadData();
+        return;
+      }
+      toast({ title: 'Error', description: response.message, variant: 'destructive' });
+      return;
+    }
+
     const response = api.selectChef(user.id, chefId);
     if (response.success) {
       toast({ title: 'Chef Updated', description: 'Your chef has been changed.' });
       setShowChefSelect(false);
-      loadData();
+      void loadData();
     } else {
       toast({ title: 'Error', description: response.error, variant: 'destructive' });
     }
   };
 
-  const handleSubmitReview = (orderId: string, rating: number, comment?: string) => {
+  const handleSubmitReview = async (orderId: string, rating: number, comment?: string) => {
     if (!user) return;
+    const token = getApiToken();
+    if (token) {
+      const response = await submitCustomerReview(token, orderId, rating, comment);
+      if (response.success) {
+        toast({ title: 'Review Submitted!', description: 'Thank you for your feedback.' });
+        void loadData();
+      } else {
+        toast({ title: 'Error', description: response.message, variant: 'destructive' });
+      }
+      return;
+    }
+
     const response = api.submitReview(user.id, orderId, rating, comment);
     if (response.success) {
       toast({ title: 'Review Submitted!', description: 'Thank you for your feedback.' });
@@ -251,19 +458,6 @@ export const CustomerDashboard = () => {
     if (dish) return dish.description;
     const meal = allMeals.find(m => m.id === mealId);
     return meal?.description || '';
-  };
-
-  const getMealSlotsForPlan = (planType?: PlanType): MealSlot[] => {
-    switch (planType) {
-      case 'basic':
-        return ['lunch'];
-      case 'standard':
-        return ['lunch', 'dinner'];
-      case 'premium':
-        return ['breakfast', 'lunch', 'dinner'];
-      default:
-        return ['lunch'];
-    }
   };
 
   const getMealSlotLabel = (slot: MealSlot) => {
@@ -290,12 +484,12 @@ export const CustomerDashboard = () => {
   };
 
   const planSlots = getMealSlotsForPlan(subscription?.plan || plan);
-  const planSlotsLabel = planSlots.map(getMealSlotLabel).join(' � ');
+  const planSlotsLabel = planSlots.map(getMealSlotLabel).join(' • ');
 
   const plans = [
-    { id: 'basic', name: 'Basic', price: '₹2,999/mo', meals: '20 meals' },
-    { id: 'standard', name: 'Standard', price: '₹4,499/mo', meals: '30 meals' },
-    { id: 'premium', name: 'Premium', price: '₹5,999/mo', meals: '60 meals' },
+    { id: 'basic', name: 'Basic', price: 'â‚¹2,999/mo', meals: '20 meals' },
+    { id: 'standard', name: 'Standard', price: 'â‚¹4,499/mo', meals: '30 meals' },
+    { id: 'premium', name: 'Premium', price: 'â‚¹5,999/mo', meals: '60 meals' },
   ];
 
   // Chef Selection Modal
@@ -323,9 +517,9 @@ export const CustomerDashboard = () => {
                         <div className="flex items-center gap-2 mt-1">
                           <StarRating rating={chef.rating || 0} />
                           <span className="text-sm font-medium">{chef.rating || 0}</span>
-                          <span className="text-xs text-muted-foreground">• {chef.serviceArea}</span>
+                          <span className="text-xs text-muted-foreground">â€¢ {chef.serviceArea}</span>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-2">{dishes.length} dishes � Customization: {dishes.some(d => d.allowsCustomization) ? 'Yes' : 'No'}</p>
+                        <p className="text-xs text-muted-foreground mt-2">{dishes.length} dishes • Customization: {dishes.some(d => d.allowsCustomization) ? 'Yes' : 'No'}</p>
                       </div>
                     </div>
                     <Button className="w-full mt-4 gradient-primary" onClick={() => handleSelectChef(chef.id)}>
@@ -417,45 +611,21 @@ export const CustomerDashboard = () => {
 
   // Main Dashboard
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Animated Kitchen Background */}
-      <div className="fixed inset-0 -z-10 overflow-hidden">
-        {/* Base gradient */}
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, #faf9f7 0%, #f5f3f0 50%, #f0ede8 100%)' }} />
-        
-        {/* Animated floating shapes */}
-        <div className="absolute top-20 left-10 w-64 h-64 rounded-full opacity-30 animate-float" style={{ background: 'radial-gradient(circle, rgba(184,115,51,0.15) 0%, transparent 70%)' }} />
-        <div className="absolute top-40 right-20 w-48 h-48 rounded-full opacity-20 animate-float-slow" style={{ background: 'radial-gradient(circle, rgba(184,115,51,0.2) 0%, transparent 70%)' }} />
-        <div className="absolute bottom-40 left-1/4 w-72 h-72 rounded-full opacity-15 animate-float-delayed" style={{ background: 'radial-gradient(circle, rgba(139,90,43,0.12) 0%, transparent 70%)' }} />
-        <div className="absolute bottom-20 right-1/3 w-56 h-56 rounded-full opacity-20 animate-float" style={{ background: 'radial-gradient(circle, rgba(184,115,51,0.18) 0%, transparent 70%)' }} />
-        
-        {/* Kitchen pattern grid */}
-        <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: 'radial-gradient(circle at 2px 2px, #1a1a1a 1px, transparent 0)',
-          backgroundSize: '32px 32px'
-        }} />
-        
-        {/* Decorative kitchen icons floating */}
-        <div className="absolute top-1/4 left-8 opacity-[0.04] animate-float">
-          <UtensilsCrossed className="w-20 h-20 text-green-800" />
-        </div>
-        <div className="absolute bottom-1/3 right-12 opacity-[0.03] animate-float-slow">
-          <ChefHat className="w-24 h-24 text-green-900" />
-        </div>
-        
-        {/* Animated lines */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-green-500/20 to-transparent" style={{ animation: 'shimmer 4s infinite' }} />
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-green-500/15 to-transparent" style={{ animation: 'shimmer 4s infinite reverse' }} />
+    <div className="min-h-screen relative overflow-hidden bg-white">
+      {/* Soft green background */}
+      <div className="fixed inset-0 -z-10">
+        <div className="absolute inset-0 bg-gradient-to-b from-emerald-50/70 via-white to-white" />
+        <div className="absolute -top-24 right-10 h-64 w-64 rounded-full bg-emerald-100/60 blur-2xl" />
+        <div className="absolute bottom-0 left-8 h-72 w-72 rounded-full bg-emerald-50 blur-2xl" />
       </div>
 
       <div className="container py-8 px-4 relative z-10">
-        <div className="max-w-4xl mx-auto">
-          {/* Welcome Header with animation */}
+        <div className="max-w-5xl mx-auto">
+          {/* Welcome Header */}
           <div className="animate-slide-up">
-            <h1 className="font-display text-3xl font-bold mb-2 bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">Welcome home, {user?.name}!</h1>
-            <p className="text-muted-foreground mb-6 flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-              Your personal kitchen is ready
+            <h1 className="section-title">Welcome back, {user?.name}!</h1>
+            <p className="mt-2 text-sm text-slate-500">
+              Your subscription schedule, chef, and meals - all in one place.
             </p>
           </div>
 
@@ -466,7 +636,7 @@ export const CustomerDashboard = () => {
 
         {/* Order Tracking */}
         {customerOrders.length > 0 && customerOrders.some(o => o.status !== 'scheduled') && (
-          <Card className="mb-6 shadow-soft border-primary/20 animate-slide-up hover-lift bg-white/80 backdrop-blur-sm" style={{ animationDelay: '100ms' }}>
+          <Card className="mb-6 card-base animate-slide-up" style={{ animationDelay: '100ms' }}>
             <CardHeader>
               <CardTitle className="font-display flex items-center gap-2">
                 <Package className="w-5 h-5 text-primary" />
@@ -478,7 +648,7 @@ export const CustomerDashboard = () => {
                 <div key={order.id}>
                   <p className="text-sm mb-3">
                     <span className="font-medium">{order.mealName}</span>
-                    <span className="text-muted-foreground"> � {order.date}</span>
+                    <span className="text-muted-foreground"> • {order.date}</span>
                   </p>
                   <OrderTracker order={order} showTimestamps />
                 </div>
@@ -488,7 +658,7 @@ export const CustomerDashboard = () => {
         )}
 
         {/* Health Snapshot Card */}
-        <Card className="mb-6 shadow-soft bg-gradient-to-br from-green-50/80 to-emerald-50/60 border-green-200/40 animate-slide-up hover-lift backdrop-blur-sm" style={{ animationDelay: '200ms' }}>
+        <Card className="mb-6 card-base animate-slide-up" style={{ animationDelay: '200ms' }}>
           <CardHeader className="pb-3">
             <CardTitle className="font-display text-lg flex items-center gap-2">
               <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -499,15 +669,15 @@ export const CustomerDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-4">
-              <div className="text-center p-4 rounded-xl bg-white/70 backdrop-blur-sm border border-green-100 hover:shadow-md transition-all hover:scale-105">
+              <div className="text-center p-4 rounded-xl bg-emerald-50 border border-emerald-100">
                 <p className="text-3xl font-bold text-green-600">{dailyMeals.filter(m => !m.isSkipped).length}</p>
                 <p className="text-xs text-muted-foreground mt-1">Meals this week</p>
               </div>
-              <div className="text-center p-4 rounded-xl bg-white/70 backdrop-blur-sm border border-green-100 hover:shadow-md transition-all hover:scale-105">
+              <div className="text-center p-4 rounded-xl bg-emerald-50 border border-emerald-100">
                 <p className="text-3xl font-bold text-green-600">~{Math.round((dailyMeals.filter(m => !m.isSkipped).length || 1) * 450)}</p>
                 <p className="text-xs text-muted-foreground mt-1">Avg. calories</p>
               </div>
-              <div className="text-center p-4 rounded-xl bg-white/70 backdrop-blur-sm border border-green-100 hover:shadow-md transition-all hover:scale-105">
+              <div className="text-center p-4 rounded-xl bg-emerald-50 border border-emerald-100">
                 <p className="text-3xl font-bold text-green-600">{dailyMeals.filter(m => m.isSkipped).length}</p>
                 <p className="text-xs text-muted-foreground mt-1">Days skipped</p>
               </div>
@@ -516,7 +686,7 @@ export const CustomerDashboard = () => {
         </Card>
         {/* Subscription & Chef Info */}
         <div className="grid md:grid-cols-2 gap-4 mb-6">
-          <Card className="shadow-soft bg-white/80 backdrop-blur-sm animate-slide-up hover-lift" style={{ animationDelay: '300ms' }}>
+          <Card className="card-base animate-slide-up" style={{ animationDelay: '300ms' }}>
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg shadow-green-500/20">
@@ -524,13 +694,13 @@ export const CustomerDashboard = () => {
                 </div>
                 <div>
                   <p className="font-medium">Your Plan</p>
-                  <p className="text-sm text-muted-foreground capitalize">{subscription?.plan} � {planSlotsLabel}</p>
+                  <p className="text-sm text-muted-foreground capitalize">{subscription?.plan} • {planSlotsLabel}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="shadow-soft bg-white/80 backdrop-blur-sm animate-slide-up hover-lift" style={{ animationDelay: '350ms' }}>
+          <Card className="card-base animate-slide-up" style={{ animationDelay: '350ms' }}>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -553,7 +723,7 @@ export const CustomerDashboard = () => {
         </div>
 
         {/* Today's Meals */}
-        <Card className="mb-6 shadow-elevated border-2 border-green-300/50 bg-gradient-to-br from-white to-green-50/50 animate-slide-up hover-lift backdrop-blur-sm" style={{ animationDelay: '450ms' }}>
+        <Card className="mb-6 card-base border-2 border-emerald-200 animate-slide-up" style={{ animationDelay: '450ms' }}>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -608,10 +778,10 @@ export const CustomerDashboard = () => {
         </Card>
 
         {/* Meal Recommendation Widget */}
-        <Card className="mb-6 shadow-soft border-green-200/30 bg-white/80 backdrop-blur-sm animate-slide-up hover-lift" style={{ animationDelay: '500ms' }}>
+        <Card className="mb-6 card-base animate-slide-up" style={{ animationDelay: '500ms' }}>
           <CardHeader>
             <CardTitle className="font-display flex items-center gap-2">
-              <span className="text-green-500">✨</span>
+              <span className="text-green-500">âœ¨</span>
               Get Personalized Recommendations
             </CardTitle>
           </CardHeader>
@@ -648,5 +818,6 @@ export const CustomerDashboard = () => {
     </div>
   );
 };
+
 
 

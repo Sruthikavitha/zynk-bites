@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { ChefHat, ArrowRight, CheckCircle2, Home, Briefcase, MapPin } from 'lucide-react';
-import * as api from '@/services/api';
+import { registerUser, setApiToken } from '@/services/backend';
 import type { Address, AddressType } from '@/types';
 
 type Step = 'welcome' | 'profile' | 'address' | 'done';
@@ -48,28 +48,40 @@ export const CustomerOnboarding = () => {
     e.preventDefault();
     setSubmitting(true);
 
-    const password = `temp-${Date.now()}`;
-    const finalEmail = email.trim() || `customer_${Date.now()}@zynk.local`;
-    const address = buildAddress();
+    const submit = async () => {
+      const password = `temp-${Date.now()}`;
+      const finalEmail = email.trim() || `customer_${Date.now()}@zynk.local`;
+      const address = buildAddress();
 
-    const response = api.registerCustomer(
-      finalEmail,
-      password,
-      name.trim(),
-      phone.trim(),
-      addressType === 'home' ? address : undefined,
-      addressType === 'work' ? address : undefined
-    );
+      const response = await registerUser({
+        fullName: name.trim(),
+        email: finalEmail,
+        password,
+        role: 'customer',
+        phone: phone.trim(),
+      });
 
-    if (response.success && response.data) {
-      login(response.data);
-      toast({ title: 'Registration Completed', description: 'Your profile is ready.' });
-      setStep('done');
-    } else {
-      toast({ title: 'Error', description: response.error, variant: 'destructive' });
-    }
+      if (response.success && response.user && response.token) {
+        setApiToken(response.token);
+        login({
+          id: String(response.user.id),
+          email: response.user.email,
+          password: '',
+          name: response.user.fullName,
+          role: response.user.role as any,
+          phone: response.user.phone || undefined,
+          createdAt: new Date().toISOString(),
+        });
+        toast({ title: 'Registration Completed', description: 'Your profile is ready.' });
+        setStep('done');
+      } else {
+        toast({ title: 'Error', description: response.message || 'Registration failed', variant: 'destructive' });
+      }
 
-    setSubmitting(false);
+      setSubmitting(false);
+    };
+
+    void submit();
   };
 
   return (

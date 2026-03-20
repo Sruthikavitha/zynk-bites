@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import * as api from '@/services/api';
 import * as db from '@/services/db';
 import { Button } from '@/components/ui/button';
@@ -72,22 +72,22 @@ const CutoffBanner = () => {
 
   if (!isLocked) {
     return (
-      <div className="mb-6 p-4 rounded-2xl bg-muted/80 border border-border/50 flex items-center gap-3">
-        <AlertCircle className="w-5 h-5 text-muted-foreground" />
+      <div className="mb-6 p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-3">
+        <AlertCircle className="w-5 h-5 text-slate-400" />
         <div>
-          <p className="font-medium text-foreground">Before evening cutoff</p>
-          <p className="text-sm text-muted-foreground">Members can still modify tomorrow's meals until 8 PM.</p>
+          <p className="font-medium text-slate-700">Before evening cutoff</p>
+          <p className="text-sm text-slate-500">Members can still modify tomorrow's meals until 8 PM.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="mb-6 p-4 rounded-2xl bg-primary/5 border border-primary/20 flex items-center gap-3">
-      <Lock className="w-5 h-5 text-primary" />
+    <div className="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center gap-3">
+      <Lock className="w-5 h-5 text-emerald-600" />
       <div>
-        <p className="font-medium text-primary">Kitchen orders locked</p>
-        <p className="text-sm text-muted-foreground">Tomorrow's meals are confirmed and sent to chefs.</p>
+        <p className="font-medium text-emerald-700">Kitchen orders locked</p>
+        <p className="text-sm text-slate-500">Tomorrow's meals are confirmed and sent to chefs.</p>
       </div>
     </div>
   );
@@ -96,23 +96,21 @@ const CutoffBanner = () => {
 const StatCard = ({ 
   icon: Icon, 
   value, 
-  label, 
-  color = 'primary' 
+  label,
 }: { 
   icon: React.ElementType; 
   value: number; 
   label: string;
-  color?: string;
 }) => (
-  <Card className="shadow-card">
+  <Card className="card-base">
     <CardContent className="pt-6">
       <div className="flex items-center gap-3">
-        <div className={`w-10 h-10 rounded-lg bg-${color}/10 flex items-center justify-center`}>
-          <Icon className={`w-5 h-5 text-${color}`} />
+        <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+          <Icon className="w-5 h-5 text-emerald-600" />
         </div>
         <div>
-          <p className="text-2xl font-bold">{value}</p>
-          <p className="text-xs text-muted-foreground">{label}</p>
+          <p className="text-2xl font-bold text-slate-900">{value}</p>
+          <p className="text-xs text-slate-500">{label}</p>
         </div>
       </div>
     </CardContent>
@@ -230,26 +228,33 @@ export const AdminDashboard = () => {
   const approvedChefsList = allChefs.filter(c => c.status === 'approved');
 
   return (
-    <div className="container py-8 px-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-center gap-4 mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-admin/10 border border-admin/20 flex items-center justify-center">
-            <ShieldCheck className="w-7 h-7 text-admin" />
+    <div className="min-h-screen relative overflow-hidden bg-white">
+      <div className="fixed inset-0 -z-10">
+        <div className="absolute inset-0 bg-gradient-to-b from-emerald-50/70 via-white to-white" />
+        <div className="absolute -top-24 right-10 h-64 w-64 rounded-full bg-emerald-100/60 blur-2xl" />
+        <div className="absolute bottom-0 left-8 h-72 w-72 rounded-full bg-emerald-50 blur-2xl" />
+      </div>
+
+      <div className="container py-8 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center gap-4 mb-8">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center">
+              <ShieldCheck className="w-7 h-7 text-emerald-600" />
+            </div>
+            <div>
+              <h1 className="section-title">Kitchen Command</h1>
+              <p className="mt-1 text-sm text-slate-500">ZYNK Platform Overview</p>
+            </div>
           </div>
-          <div>
-            <h1 className="font-display text-3xl font-bold">Kitchen Command</h1>
-            <p className="text-muted-foreground">ZYNK Platform Overview</p>
-          </div>
-        </div>
 
         <CutoffBanner />
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-          <StatCard icon={Users} value={stats.totalCustomers} label="Members" color="primary" />
-          <StatCard icon={ChefHat} value={stats.approvedChefs} label="Home Chefs" color="chef" />
-          <StatCard icon={Calendar} value={stats.activeSubscriptions} label="Active Plans" color="primary" />
-          <StatCard icon={Clock} value={stats.pendingChefs} label="Awaiting Review" color="warning" />
-          <StatCard icon={TrendingUp} value={stats.tomorrowMeals} label="Tomorrow's Meals" color="info" />
+          <StatCard icon={Users} value={stats.totalCustomers} label="Members" />
+          <StatCard icon={ChefHat} value={stats.approvedChefs} label="Home Chefs" />
+          <StatCard icon={Calendar} value={stats.activeSubscriptions} label="Active Plans" />
+          <StatCard icon={Clock} value={stats.pendingChefs} label="Awaiting Review" />
+          <StatCard icon={TrendingUp} value={stats.tomorrowMeals} label="Tomorrow's Meals" />
         </div>
 
         <Tabs defaultValue="approvals" className="space-y-6">
@@ -263,7 +268,7 @@ export const AdminDashboard = () => {
           </TabsList>
 
           <TabsContent value="approvals">
-            <Card className="shadow-elevated">
+            <Card className="card-base">
               <CardHeader>
                 <CardTitle className="font-display flex items-center gap-2">
                   <ChefHat className="w-5 h-5 text-warning" />
@@ -336,7 +341,7 @@ export const AdminDashboard = () => {
 
           <TabsContent value="operations">
             <div className="grid gap-6 md:grid-cols-2">
-              <Card className="shadow-elevated">
+              <Card className="card-base">
                 <CardHeader>
                   <CardTitle className="font-display flex items-center gap-2">
                     <ChefHat className="w-5 h-5 text-chef" />
@@ -383,7 +388,7 @@ export const AdminDashboard = () => {
                 </CardContent>
               </Card>
 
-              <Card className="shadow-elevated">
+              <Card className="card-base">
                 <CardHeader>
                   <CardTitle className="font-display flex items-center gap-2">
                     <MapPin className="w-5 h-5 text-delivery" />
@@ -422,7 +427,7 @@ export const AdminDashboard = () => {
             </div>
 
             {operationsSummary && operationsSummary.totalMeals > 0 && (
-              <Card className="shadow-card mt-6">
+              <Card className="card-base mt-6">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -446,7 +451,7 @@ export const AdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="chefs">
-            <Card className="shadow-elevated">
+            <Card className="card-base">
               <CardHeader>
                 <CardTitle className="font-display flex items-center gap-2">
                   <ChefHat className="w-5 h-5 text-chef" />
@@ -480,7 +485,7 @@ export const AdminDashboard = () => {
                           <TableCell>{chef.serviceArea || '-'}</TableCell>
                           <TableCell>
                             {chef.rating ? (
-                              <Badge variant="outline">⭐ {chef.rating}</Badge>
+                              <Badge variant="outline">â­ {chef.rating}</Badge>
                             ) : '-'}
                           </TableCell>
                           <TableCell className="text-center">
@@ -514,7 +519,7 @@ export const AdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="subscriptions">
-            <Card className="shadow-elevated">
+            <Card className="card-base">
               <CardHeader>
                 <CardTitle className="font-display flex items-center gap-2">
                   <Calendar className="w-5 h-5 text-accent" />
@@ -582,6 +587,8 @@ export const AdminDashboard = () => {
           </TabsContent>
         </Tabs>
       </div>
+      </div>
     </div>
   );
 };
+

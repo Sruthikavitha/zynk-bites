@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import * as api from '@/services/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -212,12 +212,12 @@ export const ChefDashboard = () => {
             <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-warning/20 flex items-center justify-center">
               <AlertTriangle className="w-10 h-10 text-warning" />
             </div>
-            <h1 className="font-display text-2xl font-bold mb-2">Pending Approval</h1>
-            <p className="text-muted-foreground">You can add your dishes while waiting for admin approval.</p>
+            <h1 className="section-title">Pending approval</h1>
+            <p className="mt-2 text-sm text-slate-500">You can add your dishes while waiting for admin approval.</p>
           </div>
 
           {/* Dish Management Section */}
-          <Card className="shadow-elevated mb-6">
+          <Card className="card-base mb-6">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="font-display">Your Dishes</CardTitle>
@@ -248,7 +248,7 @@ export const ChefDashboard = () => {
     return (
       <div className="container py-8 px-4">
         <div className="max-w-lg mx-auto">
-          <Card className="shadow-elevated">
+          <Card className="card-base">
             <CardHeader>
               <CardTitle className="font-display">Add New Dish</CardTitle>
               <CardDescription>Nutritional info will be auto-generated</CardDescription>
@@ -301,7 +301,7 @@ export const ChefDashboard = () => {
 
                 <div className="flex gap-3">
                   <Button type="button" variant="outline" onClick={() => setShowAddDish(false)} className="flex-1">Cancel</Button>
-                  <Button type="submit" className="flex-1 gradient-primary">Add Dish</Button>
+                  <Button type="submit" className="flex-1">Add Dish</Button>
                 </div>
               </form>
             </CardContent>
@@ -313,40 +313,22 @@ export const ChefDashboard = () => {
 
   // Main Dashboard (approved chef)
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Animated Kitchen Background */}
-      <div className="fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, #faf9f7 0%, #f5f3f0 50%, #f0ede8 100%)' }} />
-        
-        {/* Floating shapes */}
-        <div className="absolute top-32 right-20 w-56 h-56 rounded-full opacity-25 animate-float" style={{ background: 'radial-gradient(circle, rgba(184,115,51,0.2) 0%, transparent 70%)' }} />
-        <div className="absolute bottom-40 left-10 w-64 h-64 rounded-full opacity-20 animate-float-slow" style={{ background: 'radial-gradient(circle, rgba(139,90,43,0.15) 0%, transparent 70%)' }} />
-        <div className="absolute top-1/2 left-1/3 w-48 h-48 rounded-full opacity-15 animate-float-delayed" style={{ background: 'radial-gradient(circle, rgba(184,115,51,0.18) 0%, transparent 70%)' }} />
-        
-        {/* Pattern */}
-        <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: 'radial-gradient(circle at 2px 2px, #1a1a1a 1px, transparent 0)',
-          backgroundSize: '32px 32px'
-        }} />
-        
-        {/* Decorative icons */}
-        <div className="absolute bottom-1/4 right-8 opacity-[0.04] animate-float">
-          <ChefHat className="w-24 h-24 text-green-900" />
-        </div>
-        
-        {/* Animated lines */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-green-500/20 to-transparent" style={{ animation: 'shimmer 4s infinite' }} />
+    <div className="min-h-screen relative overflow-hidden bg-white">
+      <div className="fixed inset-0 -z-10">
+        <div className="absolute inset-0 bg-gradient-to-b from-emerald-50/70 via-white to-white" />
+        <div className="absolute -top-24 right-10 h-64 w-64 rounded-full bg-emerald-100/60 blur-2xl" />
+        <div className="absolute bottom-0 left-8 h-72 w-72 rounded-full bg-emerald-50 blur-2xl" />
       </div>
 
       <div className="container py-8 px-4 relative z-10">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <div className="flex items-center gap-4 mb-8 animate-slide-up">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 flex items-center justify-center shadow-xl">
               <ChefHat className="w-7 h-7 text-green-400" />
             </div>
             <div>
-              <h1 className="font-display text-3xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">Your Kitchen</h1>
-              <p className="text-muted-foreground flex items-center gap-2">
+              <h1 className="section-title">Your Kitchen</h1>
+              <p className="mt-1 text-sm text-slate-500 flex items-center gap-2">
                 <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
                 Welcome back, Chef {user?.name}
               </p>
@@ -354,36 +336,36 @@ export const ChefDashboard = () => {
           </div>
 
           {/* Finalization Banner */}
-          <div className={`mb-6 p-4 rounded-2xl flex items-center gap-3 animate-slide-up backdrop-blur-sm ${canModify ? 'bg-green-50/80 border border-green-200' : 'bg-white/60 border border-gray-200'}`} style={{ animationDelay: '100ms' }}>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${canModify ? 'bg-green-500' : 'bg-gray-400'}`}>
+          <div className={`mb-6 p-4 rounded-2xl flex items-center gap-3 animate-slide-up ${canModify ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-50 border border-slate-200'}`} style={{ animationDelay: '100ms' }}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${canModify ? 'bg-emerald-500' : 'bg-slate-400'}`}>
               <Clock className="w-5 h-5 text-white" />
             </div>
-            <p className={canModify ? 'text-green-800 font-medium' : 'text-gray-600'}>
+            <p className={canModify ? 'text-emerald-700 font-medium' : 'text-slate-600'}>
               {canModify ? 'Tomorrow\'s prep list is ready! Time to cook.' : 'Orders still coming in. Final list after 8 PM.'}
             </p>
           </div>
 
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <Card className="shadow-soft bg-white/80 backdrop-blur-sm animate-slide-up hover-lift" style={{ animationDelay: '150ms' }}>
+            <Card className="card-base animate-slide-up" style={{ animationDelay: '150ms' }}>
               <CardContent className="pt-6">
                 <p className="text-3xl font-bold text-green-600">{orders.length}</p>
                 <p className="text-sm text-muted-foreground">Tomorrow's Orders</p>
               </CardContent>
             </Card>
-            <Card className="shadow-soft bg-white/80 backdrop-blur-sm animate-slide-up hover-lift" style={{ animationDelay: '200ms' }}>
+            <Card className="card-base animate-slide-up" style={{ animationDelay: '200ms' }}>
               <CardContent className="pt-6">
                 <p className="text-3xl font-bold text-gray-500">{orders.filter(o => o.status === 'pending').length}</p>
                 <p className="text-sm text-muted-foreground">Waiting</p>
               </CardContent>
             </Card>
-            <Card className="shadow-soft bg-white/80 backdrop-blur-sm animate-slide-up hover-lift" style={{ animationDelay: '250ms' }}>
+            <Card className="card-base animate-slide-up" style={{ animationDelay: '250ms' }}>
               <CardContent className="pt-6">
                 <p className="text-3xl font-bold text-blue-500">{orders.filter(o => o.status === 'preparing').length}</p>
                 <p className="text-sm text-muted-foreground">Cooking</p>
               </CardContent>
             </Card>
-            <Card className="shadow-soft bg-white/80 backdrop-blur-sm animate-slide-up hover-lift" style={{ animationDelay: '300ms' }}>
+            <Card className="card-base animate-slide-up" style={{ animationDelay: '300ms' }}>
               <CardContent className="pt-6">
                 <p className="text-3xl font-bold text-green-500">{orders.filter(o => o.status === 'ready').length}</p>
                 <p className="text-sm text-muted-foreground">Ready for Pickup</p>
@@ -392,7 +374,7 @@ export const ChefDashboard = () => {
           </div>
 
           {/* Menu Chart Builder */}
-          <Card className="shadow-soft mb-6 bg-white/85 backdrop-blur-sm animate-slide-up" style={{ animationDelay: '320ms' }}>
+          <Card className="card-base mb-6 animate-slide-up" style={{ animationDelay: '320ms' }}>
             <CardHeader>
               <CardTitle className="font-display">Weekly Menu Chart</CardTitle>
               <CardDescription>Enter your brochure menu and optional swap alternatives per day/slot</CardDescription>
@@ -474,20 +456,15 @@ export const ChefDashboard = () => {
               </div>
 
               <div className="flex justify-end">
-                <Button onClick={handleSaveMenuChart} className="gradient-primary">Save Menu Chart</Button>
+                <Button onClick={handleSaveMenuChart}>Save Menu Chart</Button>
               </div>
             </CardContent>
           </Card>
 
           {/* Orders List */}
-          <Card className="shadow-soft mb-6 bg-white/80 backdrop-blur-sm animate-slide-up" style={{ animationDelay: '350ms' }}>
+          <Card className="card-base mb-6 animate-slide-up" style={{ animationDelay: '350ms' }}>
             <CardHeader>
-              <CardTitle className="font-display flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
-                  <Clock className="w-4 h-4 text-white" />
-              </div>
-              Tomorrow's Prep List
-            </CardTitle>
+              <CardTitle className="font-display flex items-center gap-2">\n                Menu\n              </CardTitle>
             <CardDescription>Orders confirmed after evening cutoff</CardDescription>
           </CardHeader>
           <CardContent>
@@ -536,7 +513,7 @@ export const ChefDashboard = () => {
                           </Button>
                         )}
                         {order.status === 'preparing' && (
-                          <Button size="sm" className="gradient-herbal rounded-full" onClick={() => handleUpdateOrderStatus(order.id, 'ready')}>
+                          <Button size="sm"  onClick={() => handleUpdateOrderStatus(order.id, 'ready')}>
                             Mark Ready
                           </Button>
                         )}
@@ -550,14 +527,11 @@ export const ChefDashboard = () => {
         </Card>
 
         {/* Dish Management */}
-        <Card className="shadow-card bg-white/80 backdrop-blur-sm animate-slide-up" style={{ animationDelay: '400ms' }}>
+        <Card className="card-base animate-slide-up" style={{ animationDelay: '400ms' }}>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="font-display flex items-center gap-2">
-                <span className="text-green-500">🍳</span>
-                Your Dishes
-              </CardTitle>
-              <Button onClick={() => setShowAddDish(true)} size="sm" className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600">
+              <CardTitle className="font-display flex items-center gap-2">\n                Menu\n              </CardTitle>
+              <Button onClick={() => setShowAddDish(true)} size="sm" >
                 <Plus className="w-4 h-4 mr-2" />Add Dish
               </Button>
             </div>
@@ -577,7 +551,7 @@ export const ChefDashboard = () => {
 };
 
 const DishCard = ({ dish }: { dish: Dish }) => (
-  <div className="p-4 rounded-2xl bg-gradient-to-r from-green-50/50 to-emerald-50/30 border border-green-100 flex items-center justify-between hover:shadow-md transition-all">
+  <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-between hover:shadow-md transition-all">
     <div className="flex items-center gap-4">
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${dish.category === 'veg' ? 'bg-green-500' : 'bg-red-500'}`}>
         {dish.category === 'veg' ? <Leaf className="w-5 h-5 text-white" /> : <Drumstick className="w-5 h-5 text-white" />}
@@ -595,3 +569,6 @@ const DishCard = ({ dish }: { dish: Dish }) => (
     </Badge>
   </div>
 );
+
+
+

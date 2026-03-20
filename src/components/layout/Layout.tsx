@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { Header } from './Header';
+import { BottomNav } from './BottomNav';
 import { UtensilsCrossed } from 'lucide-react';
 
 interface LayoutProps {
@@ -8,7 +9,7 @@ interface LayoutProps {
 
 export const Layout = ({ children }: LayoutProps) => {
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background pb-16 md:pb-0">
       <Header />
       <main className="flex-1">
         {children}
@@ -35,6 +36,7 @@ export const Layout = ({ children }: LayoutProps) => {
           </div>
         </div>
       </footer>
+      <BottomNav />
     </div>
   );
 };

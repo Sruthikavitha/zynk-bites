@@ -25,7 +25,7 @@ export const createNewSubscription = async (req: express.Request, res: express.R
       return;
     }
 
-    const { planName, mealsPerWeek, priceInCents, deliveryAddress, postalCode, city } = req.body;
+    const { planName, mealsPerWeek, priceInCents, deliveryAddress, postalCode, city, chefId } = req.body;
 
     // Validate subscription data
     const validation = validateSubscriptionData({
@@ -53,6 +53,7 @@ export const createNewSubscription = async (req: express.Request, res: express.R
     const subscription = await createSubscription({
       userId: req.user.userId,
       planName,
+      chefId: chefId ? Number(chefId) : null,
       mealsPerWeek,
       priceInCents,
       deliveryAddress,
@@ -179,6 +180,48 @@ export const updateAddress = async (req: express.Request, res: express.Response)
     });
   } catch (error: any) {
     console.error('Update address error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// Update selected chef for a subscription
+export const updateChefSelection = async (req: express.Request, res: express.Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, message: 'Not authenticated' });
+      return;
+    }
+
+    const { id } = req.params;
+    const { chefId } = req.body;
+
+    if (!chefId) {
+      res.status(400).json({ success: false, message: 'chefId is required' });
+      return;
+    }
+
+    const subscription = await getSubscriptionById(parseInt(id));
+    if (!subscription) {
+      res.status(404).json({ success: false, message: 'Subscription not found' });
+      return;
+    }
+
+    if (subscription.userId !== req.user.userId) {
+      res.status(403).json({ success: false, message: 'Access denied' });
+      return;
+    }
+
+    const updated = await updateSubscription(subscription.id, {
+      chefId: Number(chefId),
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Chef updated successfully',
+      subscription: updated,
+    });
+  } catch (error: any) {
+    console.error('Update chef error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
