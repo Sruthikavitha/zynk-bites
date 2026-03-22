@@ -7,7 +7,8 @@ import { RegisterRequest, LoginRequest, AuthResponse } from '../types/auth.js';
 // Register a new user (customer or chef)
 export const register = async (req: express.Request, res: express.Response): Promise<void> => {
   try {
-    const { fullName, email, password, role, chefBusinessName, phone } = req.body as RegisterRequest;
+    const { fullName, email, password, role, chefBusinessName, phone, specialty, bio, serviceArea } =
+      req.body as RegisterRequest;
 
     // Validate required fields
     if (!fullName || !email || !password) {
@@ -40,28 +41,26 @@ export const register = async (req: express.Request, res: express.Response): Pro
     const passwordHash = await hashPassword(password);
 
     // Create user in database
+    const isChefRegistration = userRole === 'chef';
     const newUser = await createUser({
       fullName,
       email,
       passwordHash,
       role: userRole,
-      chefBusinessName: userRole === 'chef' ? chefBusinessName : null,
+      chefBusinessName: isChefRegistration ? chefBusinessName : null,
+      specialty: isChefRegistration ? specialty || chefBusinessName || null : null,
+      bio: isChefRegistration ? bio || null : null,
+      serviceArea: isChefRegistration ? serviceArea || null : null,
       phone: phone || null,
-      isActive: true,
-    });
-
-    // Generate JWT token
-    const token = signToken({
-      userId: newUser.id,
-      email: newUser.email,
-      role: newUser.role,
+      isActive: isChefRegistration ? false : true,
     });
 
     // Return success response
     const response: AuthResponse = {
       success: true,
-      message: `${userRole === 'chef' ? 'Chef' : 'Customer'} registered successfully`,
-      token,
+      message: isChefRegistration
+        ? 'Chef application submitted. Awaiting admin approval before going live.'
+        : 'Customer registered successfully',
       user: {
         id: newUser.id,
         email: newUser.email,
@@ -69,6 +68,15 @@ export const register = async (req: express.Request, res: express.Response): Pro
         role: newUser.role,
       },
     };
+
+    if (!isChefRegistration) {
+      // Generate JWT token only for immediately active customer accounts
+      response.token = signToken({
+        userId: newUser.id,
+        email: newUser.email,
+        role: newUser.role,
+      });
+    }
 
     res.status(201).json(response);
   } catch (error: any) {
@@ -99,7 +107,10 @@ export const login = async (req: express.Request, res: express.Response): Promis
 
     // Check if account is active
     if (!user.isActive) {
-      res.status(403).json({ success: false, message: 'Account is inactive' });
+      res.status(403).json({
+        success: false,
+        message: user.role === 'chef' ? 'Chef application is pending admin approval' : 'Account is inactive',
+      });
       return;
     }
 

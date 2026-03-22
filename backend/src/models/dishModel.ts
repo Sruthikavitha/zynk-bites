@@ -3,7 +3,6 @@
  * Database operations for dishes
  */
 
-import db from "../config/database.js";
 import type { Dish } from "../types/index.js";
 
 /**

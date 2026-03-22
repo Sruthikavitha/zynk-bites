@@ -58,6 +58,9 @@ export const Header = () => {
           <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex font-chef text-xs tracking-wider text-gray-700 hover:text-green-600 hover:bg-transparent">
             <Link to="/chefs">CHEFS</Link>
           </Button>
+          <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex font-chef text-xs tracking-wider text-gray-700 hover:text-green-600 hover:bg-transparent">
+            <Link to="/chef-partner">COOK WITH ZYNK</Link>
+          </Button>
           
           {isAuthenticated && user ? (
             <>

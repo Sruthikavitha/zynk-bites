@@ -84,7 +84,7 @@ export const getChefProfile = async (req: Request, res: Response) => {
     }
 
     const chef = await getChefById(chefId);
-    if (!chef) {
+    if (!chef || !chef.isActive) {
       return res.status(404).json({ success: false, error: 'Chef not found' });
     }
 

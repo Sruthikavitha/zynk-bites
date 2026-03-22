@@ -1,156 +1,611 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { AddressSelector } from "@/components/zynk/AddressSelector";
-import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { getBackendApiBaseUrl, getApiToken, getChefProfile } from "@/services/backend";
+import type { Address, Customer, PlanType } from "@/types";
+import {
+  CalendarDays,
+  ChefHat,
+  CreditCard,
+  IndianRupee,
+  MapPin,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 
-const steps = [
-  "Select plan",
-  "Enter address",
-  "Choose start date",
-  "Payment",
+type RazorpayHandlerResponse = {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+};
+
+type RazorpayOptions = {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id: string;
+  handler: (response: RazorpayHandlerResponse) => void | Promise<void>;
+  prefill?: {
+    name?: string;
+    email?: string;
+    contact?: string;
+  };
+  theme?: {
+    color: string;
+  };
+  modal?: {
+    ondismiss?: () => void;
+  };
+};
+
+type RazorpayInstance = {
+  open: () => void;
+};
+
+type RazorpayConstructor = new (options: RazorpayOptions) => RazorpayInstance;
+type RazorpayWindow = Window & typeof globalThis & { Razorpay?: RazorpayConstructor };
+
+type CheckoutState = {
+  selectedChefId?: string;
+  selectedPlan?: PlanType;
+};
+
+const emptyAddress: Address = {
+  street: "",
+  city: "",
+  state: "",
+  zipCode: "",
+};
+
+const planMeta: Record<PlanType, { name: string; price: number; mealsLabel: string }> = {
+  basic: { name: "Basic", price: 299900, mealsLabel: "1 meal/day" },
+  standard: { name: "Standard", price: 449900, mealsLabel: "2 meals/day" },
+  premium: { name: "Premium", price: 599900, mealsLabel: "3 meals/day" },
+};
+
+const mealOptions = [
+  { id: "1", label: "1 meal / day", multiplier: 1 },
+  { id: "2", label: "2 meals / day", multiplier: 1.35 },
+  { id: "3", label: "3 meals / day", multiplier: 1.7 },
 ];
 
+const durationOptions = [
+  { id: 1, label: "1 month" },
+  { id: 3, label: "3 months" },
+  { id: 6, label: "6 months" },
+];
+
+const isAddressComplete = (address: Address) =>
+  [address.street, address.city, address.state, address.zipCode].every((item) => item.trim().length > 0);
+
+const loadRazorpayCheckout = async () => {
+  await new Promise<void>((resolve, reject) => {
+    const razorpayWindow = window as RazorpayWindow;
+    if (razorpayWindow.Razorpay) {
+      resolve();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load Razorpay checkout"));
+    document.body.appendChild(script);
+  });
+};
+
 const Checkout = () => {
-  const [activeStep, setActiveStep] = useState(0);
-  const [address, setAddress] = useState("");
-  const [date, setDate] = useState<Date | undefined>(new Date());
-  const [confirmed, setConfirmed] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  const routeState = (location.state || {}) as CheckoutState;
+  const customer = user as Customer | null;
+
+  const [chefName, setChefName] = useState("Selected chef");
+  const [selectedPlan, setSelectedPlan] = useState<PlanType>(routeState.selectedPlan || "standard");
+  const [selectedDuration, setSelectedDuration] = useState(1);
+  const [selectedMeals, setSelectedMeals] = useState("2");
+  const [addressMode, setAddressMode] = useState<"home" | "work" | "manual">("manual");
+  const [manualAddress, setManualAddress] = useState<Address>({ ...emptyAddress });
+  const [startDate, setStartDate] = useState(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split("T")[0];
+  });
+  const [coupon, setCoupon] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"upi" | "debit" | "credit" | "netbanking">("upi");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const loadChef = async () => {
+      if (!routeState.selectedChefId) return;
+      const profile = await getChefProfile(routeState.selectedChefId);
+      if (profile?.chef?.name) {
+        setChefName(profile.chef.name);
+      }
+    };
+    void loadChef();
+  }, [routeState.selectedChefId]);
+
+  useEffect(() => {
+    if (customer?.homeAddress && isAddressComplete(customer.homeAddress)) {
+      setAddressMode("home");
+      setManualAddress(customer.homeAddress);
+      return;
+    }
+    if (customer?.workAddress && isAddressComplete(customer.workAddress)) {
+      setAddressMode("work");
+      setManualAddress(customer.workAddress);
+    }
+  }, [customer]);
+
+  const selectedAddress = useMemo(() => {
+    if (addressMode === "home" && customer?.homeAddress && isAddressComplete(customer.homeAddress)) {
+      return customer.homeAddress;
+    }
+    if (addressMode === "work" && customer?.workAddress && isAddressComplete(customer.workAddress)) {
+      return customer.workAddress;
+    }
+    return manualAddress;
+  }, [addressMode, customer, manualAddress]);
+
+  const priceSummary = useMemo(() => {
+    const monthlyBase = planMeta[selectedPlan].price;
+    const mealMultiplier = mealOptions.find((option) => option.id === selectedMeals)?.multiplier || 1;
+    const subtotal = Math.round(monthlyBase * selectedDuration * mealMultiplier);
+    const discount = coupon.trim().toUpperCase() === "WELCOME10" ? Math.round(subtotal * 0.1) : 0;
+    const finalAmount = subtotal - discount;
+
+    return {
+      subtotal,
+      discount,
+      finalAmount,
+      finalAmountLabel: `INR ${(finalAmount / 100).toLocaleString("en-IN")}`,
+    };
+  }, [selectedPlan, selectedDuration, selectedMeals, coupon]);
+
+  const handlePayment = async () => {
+    const token = getApiToken();
+    if (!user || !token) {
+      toast({
+        title: "Login required",
+        description: "Sign in before completing subscription payment.",
+        variant: "destructive",
+      });
+      navigate("/login");
+      return;
+    }
+
+    if (!routeState.selectedChefId) {
+      toast({
+        title: "Select a chef",
+        description: "Choose a chef before opening checkout.",
+        variant: "destructive",
+      });
+      navigate("/chefs");
+      return;
+    }
+
+    if (!isAddressComplete(selectedAddress)) {
+      toast({
+        title: "Delivery address required",
+        description: "Complete the address before proceeding to Razorpay payment.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      await loadRazorpayCheckout();
+
+      let apiBase = getBackendApiBaseUrl();
+      if (apiBase.endsWith("/api")) apiBase = apiBase.replace(/\/api\/?$/, "");
+      if (!apiBase) apiBase = `${window.location.protocol}//${window.location.hostname}:3002`;
+
+      const orderRes = await fetch(`${apiBase}/api/payment/create-order`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          amount: priceSummary.finalAmount,
+          currency: "INR",
+          plan: selectedPlan,
+        }),
+      });
+
+      const orderData = await orderRes.json();
+      if (!orderRes.ok || !orderData.success || !orderData.order) {
+        toast({
+          title: "Payment setup failed",
+          description: orderData.message || "Unable to create your Razorpay order.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      const razorpayKey = orderData.keyId || import.meta.env.VITE_RAZORPAY_KEY_ID;
+      if (!razorpayKey) {
+        toast({
+          title: "Configuration error",
+          description: "Razorpay key is not configured.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      setLoading(false);
+
+      const options: RazorpayOptions = {
+        key: razorpayKey,
+        amount: orderData.order.amount,
+        currency: "INR",
+        name: "ZYNK Bites",
+        description: `${planMeta[selectedPlan].name} subscription`,
+        order_id: orderData.order.id,
+        handler: async (response) => {
+          try {
+            const verifyRes = await fetch(`${apiBase}/api/payment/verify`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                plan: selectedPlan,
+                chefId: routeState.selectedChefId,
+                homeAddress: selectedAddress,
+                paymentMethod,
+              }),
+            });
+
+            const verifyData = await verifyRes.json();
+            if (!verifyRes.ok || !verifyData.success) {
+              toast({
+                title: "Payment verification failed",
+                description: verifyData.message || "Could not activate your subscription.",
+                variant: "destructive",
+              });
+              return;
+            }
+
+            navigate("/payment-success", {
+              state: {
+                chefName,
+                planName: planMeta[selectedPlan].name,
+                durationLabel: `${selectedDuration} month${selectedDuration > 1 ? "s" : ""}`,
+                mealsLabel: mealOptions.find((option) => option.id === selectedMeals)?.label,
+                startDate,
+                deliveryAddress: formatAddress(selectedAddress),
+                paymentId: response.razorpay_payment_id,
+                amountLabel: priceSummary.finalAmountLabel,
+              },
+            });
+          } catch {
+            toast({
+              title: "Verification failed",
+              description: "We could not confirm the payment. Please contact support if charged.",
+              variant: "destructive",
+            });
+          }
+        },
+        prefill: {
+          name: customer?.name || "",
+          email: customer?.email || "",
+          contact: customer?.phone || "",
+        },
+        theme: { color: "#16a34a" },
+        modal: {
+          ondismiss: () => {
+            toast({
+              title: "Payment cancelled",
+              description: "You closed the payment window before completion.",
+            });
+          },
+        },
+      };
+
+      const RazorpayCheckout = (window as RazorpayWindow).Razorpay;
+      if (!RazorpayCheckout) {
+        throw new Error("Razorpay checkout is unavailable.");
+      }
+
+      const razorpay = new RazorpayCheckout(options);
+      razorpay.open();
+    } catch (error) {
+      setLoading(false);
+      toast({
+        title: "Payment failed",
+        description: error instanceof Error ? error.message : "Unable to start payment.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <Layout>
-      <section className="container px-4 py-12">
-        <h1 className="section-title">Checkout</h1>
-        <p className="mt-2 text-sm text-slate-500">Complete your subscription in four steps.</p>
-
-        <div className="mt-8 rounded-2xl border border-emerald-100 bg-white p-6 shadow-soft">
-          <div className="flex flex-wrap items-center gap-4 text-sm">
-            {steps.map((step, index) => (
-              <div
-                key={step}
-                className={`flex items-center gap-2 rounded-full px-4 py-2 ${
-                  index === activeStep
-                    ? "bg-emerald-600 text-white"
-                    : "bg-emerald-50 text-emerald-700"
-                }`}
-              >
-                <span className="text-xs font-semibold">{index + 1}</span>
-                {step}
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-            <div className="space-y-6">
-              {activeStep === 0 && (
-                <div className="grid gap-4 md:grid-cols-3">
-                  {["Lite", "Signature", "Complete"].map((plan, index) => (
-                    <Card key={plan} className="card-base p-4">
-                      <p className="text-sm text-slate-500">{plan}</p>
-                      <p className="mt-2 text-2xl font-semibold text-emerald-700">
-                        ?{[2999, 4499, 5999][index]}
-                      </p>
-                      <Button className="mt-4 w-full" onClick={() => setActiveStep(1)}>
-                        Select plan
-                      </Button>
-                    </Card>
-                  ))}
-                </div>
-              )}
-
-              {activeStep === 1 && (
-                <div className="card-base p-6">
-                  <h3 className="text-lg font-semibold text-slate-900">Delivery address</h3>
-                  <p className="text-sm text-slate-500">Pick your preferred drop location.</p>
-                  <div className="mt-4">
-                    <AddressSelector value={address} onChange={setAddress} />
-                  </div>
-                  <Button className="mt-6" onClick={() => setActiveStep(2)}>
-                    Continue
-                  </Button>
-                </div>
-              )}
-
-              {activeStep === 2 && (
-                <div className="card-base p-6">
-                  <h3 className="text-lg font-semibold text-slate-900">Start date</h3>
-                  <p className="text-sm text-slate-500">Choose when your subscription begins.</p>
-                  <div className="mt-4">
-                    <Calendar mode="single" selected={date} onSelect={setDate} className="rounded-xl border" />
-                  </div>
-                  <Button className="mt-6" onClick={() => setActiveStep(3)}>
-                    Continue to payment
-                  </Button>
-                </div>
-              )}
-
-              {activeStep === 3 && (
-                <div className="card-base p-6">
-                  <h3 className="text-lg font-semibold text-slate-900">Payment</h3>
-                  <p className="text-sm text-slate-500">Secure checkout powered by Razorpay.</p>
-                  <Button
-                    className="mt-6 h-12 w-full rounded-full bg-emerald-600 text-white hover:bg-emerald-700"
-                    onClick={() => setConfirmed(true)}
-                  >
-                    Pay with Razorpay
-                  </Button>
-                </div>
-              )}
+      <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.14),_transparent_32%),linear-gradient(180deg,#f7fff8_0%,#ffffff_54%,#f8fafc_100%)]">
+        <div className="container px-4 py-10 md:py-14">
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-8">
+              <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
+                Checkout & payment
+              </Badge>
+              <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-900">Complete your monthly subscription</h1>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-500">
+                Customize plan duration, meals per day, address, and start date, then activate the subscription through Razorpay.
+              </p>
             </div>
 
-            <div className="card-base p-6">
-              <h3 className="text-lg font-semibold text-slate-900">Order summary</h3>
-              <div className="mt-4 space-y-3 text-sm text-slate-600">
-                <div className="flex items-center justify-between">
-                  <span>Plan</span>
-                  <span>Signature</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Start date</span>
-                  <span>{date?.toDateString()}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Address</span>
-                  <span className="max-w-[160px] text-right">{address || "Select address"}</span>
-                </div>
-                <div className="border-t pt-3 text-base font-semibold text-slate-900 flex items-center justify-between">
-                  <span>Total</span>
-                  <span>?4,499</span>
-                </div>
+            <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+              <div className="space-y-6">
+                <Card className="rounded-[32px] border-emerald-100 shadow-soft">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-3">
+                      <ChefHat className="h-5 w-5 text-emerald-600" />
+                      <div>
+                        <p className="text-lg font-semibold text-slate-900">{chefName}</p>
+                        <p className="text-sm text-slate-500">Selected chef for your subscription</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-[32px] border-emerald-100 shadow-soft">
+                  <CardContent className="space-y-5 p-6">
+                    <div>
+                      <p className="text-lg font-semibold text-slate-900">Plan customization</p>
+                      <p className="text-sm text-slate-500">Pick the plan, duration, and meal frequency that fits your routine.</p>
+                    </div>
+
+                    <div className="grid gap-3 md:grid-cols-3">
+                      {Object.entries(planMeta).map(([planKey, plan]) => (
+                        <button
+                          key={planKey}
+                          type="button"
+                          onClick={() => setSelectedPlan(planKey as PlanType)}
+                          className={`rounded-2xl border p-4 text-left transition ${
+                            selectedPlan === planKey ? "border-emerald-500 bg-emerald-50" : "border-slate-200"
+                          }`}
+                        >
+                          <p className="font-semibold text-slate-900">{plan.name}</p>
+                          <p className="mt-1 text-sm text-slate-500">{plan.mealsLabel}</p>
+                          <p className="mt-3 text-xl font-semibold text-emerald-700">INR {(plan.price / 100).toLocaleString("en-IN")}</p>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <p className="mb-3 text-sm font-medium text-slate-700">Duration</p>
+                        <div className="flex flex-wrap gap-2">
+                          {durationOptions.map((option) => (
+                            <button
+                              key={option.id}
+                              type="button"
+                              onClick={() => setSelectedDuration(option.id)}
+                              className={`rounded-full px-4 py-2 text-sm transition ${
+                                selectedDuration === option.id
+                                  ? "bg-emerald-600 text-white"
+                                  : "bg-slate-100 text-slate-600"
+                              }`}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="mb-3 text-sm font-medium text-slate-700">Meals per day</p>
+                        <div className="flex flex-wrap gap-2">
+                          {mealOptions.map((option) => (
+                            <button
+                              key={option.id}
+                              type="button"
+                              onClick={() => setSelectedMeals(option.id)}
+                              className={`rounded-full px-4 py-2 text-sm transition ${
+                                selectedMeals === option.id
+                                  ? "bg-emerald-600 text-white"
+                                  : "bg-slate-100 text-slate-600"
+                              }`}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-[32px] border-emerald-100 shadow-soft">
+                  <CardContent className="space-y-5 p-6">
+                    <div className="flex items-center gap-3">
+                      <MapPin className="h-5 w-5 text-emerald-600" />
+                      <div>
+                        <p className="text-lg font-semibold text-slate-900">Delivery address</p>
+                        <p className="text-sm text-slate-500">Address selection is mandatory before subscription payment.</p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { id: "home", label: "Home", enabled: Boolean(customer?.homeAddress && isAddressComplete(customer.homeAddress)) },
+                        { id: "work", label: "Work", enabled: Boolean(customer?.workAddress && isAddressComplete(customer.workAddress)) },
+                        { id: "manual", label: "Manual entry", enabled: true },
+                      ].map((option) => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          disabled={!option.enabled}
+                          onClick={() => setAddressMode(option.id as "home" | "work" | "manual")}
+                          className={`rounded-full px-4 py-2 text-sm transition ${
+                            addressMode === option.id
+                              ? "bg-emerald-600 text-white"
+                              : option.enabled
+                                ? "bg-slate-100 text-slate-600"
+                                : "bg-slate-100 text-slate-300"
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {(addressMode === "manual" || !isAddressComplete(selectedAddress)) && (
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <Input
+                          value={manualAddress.street}
+                          onChange={(event) => setManualAddress((prev) => ({ ...prev, street: event.target.value }))}
+                          placeholder="Street address"
+                        />
+                        <Input
+                          value={manualAddress.city}
+                          onChange={(event) => setManualAddress((prev) => ({ ...prev, city: event.target.value }))}
+                          placeholder="City"
+                        />
+                        <Input
+                          value={manualAddress.state}
+                          onChange={(event) => setManualAddress((prev) => ({ ...prev, state: event.target.value }))}
+                          placeholder="State"
+                        />
+                        <Input
+                          value={manualAddress.zipCode}
+                          onChange={(event) => setManualAddress((prev) => ({ ...prev, zipCode: event.target.value }))}
+                          placeholder="ZIP Code"
+                        />
+                      </div>
+                    )}
+
+                    <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-slate-600">
+                      {isAddressComplete(selectedAddress)
+                        ? formatAddress(selectedAddress)
+                        : "Enter the full address to continue."}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-[32px] border-emerald-100 shadow-soft">
+                  <CardContent className="grid gap-4 p-6 md:grid-cols-[1fr_auto] md:items-end">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <p className="mb-2 text-sm font-medium text-slate-700">Start date</p>
+                        <Input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+                      </div>
+                      <div>
+                        <p className="mb-2 text-sm font-medium text-slate-700">Coupon</p>
+                        <Input value={coupon} onChange={(event) => setCoupon(event.target.value)} placeholder="WELCOME10" />
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {["upi", "debit", "credit", "netbanking"].map((method) => (
+                        <button
+                          key={method}
+                          type="button"
+                          onClick={() => setPaymentMethod(method as typeof paymentMethod)}
+                          className={`rounded-full px-4 py-2 text-sm transition ${
+                            paymentMethod === method ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-600"
+                          }`}
+                        >
+                          {method.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="space-y-6">
+                <Card className="rounded-[32px] border-emerald-100 shadow-soft">
+                  <CardContent className="space-y-5 p-6">
+                    <div className="flex items-center gap-3">
+                      <CreditCard className="h-5 w-5 text-emerald-600" />
+                      <div>
+                        <p className="text-lg font-semibold text-slate-900">Order summary</p>
+                        <p className="text-sm text-slate-500">Your final amount updates instantly.</p>
+                      </div>
+                    </div>
+
+                    <SummaryRow label="Plan" value={planMeta[selectedPlan].name} />
+                    <SummaryRow label="Duration" value={`${selectedDuration} month${selectedDuration > 1 ? "s" : ""}`} />
+                    <SummaryRow label="Meals" value={mealOptions.find((option) => option.id === selectedMeals)?.label || ""} />
+                    <SummaryRow label="Chef" value={chefName} />
+                    <SummaryRow label="Start date" value={new Date(startDate).toLocaleDateString("en-IN")} />
+                    <SummaryRow label="Address" value={isAddressComplete(selectedAddress) ? formatAddress(selectedAddress) : "Pending"} />
+                    <SummaryRow label="Subtotal" value={`INR ${(priceSummary.subtotal / 100).toLocaleString("en-IN")}`} />
+                    <SummaryRow
+                      label="Discount"
+                      value={priceSummary.discount ? `- INR ${(priceSummary.discount / 100).toLocaleString("en-IN")}` : "No discount"}
+                    />
+
+                    <div className="rounded-2xl bg-emerald-50 px-4 py-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <IndianRupee className="h-5 w-5 text-emerald-600" />
+                          <span className="text-sm font-medium text-slate-700">Total payable</span>
+                        </div>
+                        <span className="text-2xl font-semibold text-slate-900">{priceSummary.finalAmountLabel}</span>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-emerald-100 bg-white px-4 py-4 text-sm text-slate-600">
+                      <div className="flex items-center gap-2 text-emerald-700">
+                        <ShieldCheck className="h-4 w-4" />
+                        Secure payment powered by Razorpay
+                      </div>
+                      <div className="mt-2 flex items-center gap-2 text-slate-500">
+                        <Sparkles className="h-4 w-4" />
+                        Success redirects to your subscription confirmation page.
+                      </div>
+                    </div>
+
+                    <Button className="h-12 w-full rounded-full" onClick={handlePayment} disabled={loading}>
+                      {loading ? "Preparing Razorpay..." : "Pay & activate subscription"}
+                    </Button>
+
+                    {!user && (
+                      <Button asChild variant="outline" className="h-12 w-full rounded-full">
+                        <Link to="/login">Sign in to continue</Link>
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
             </div>
           </div>
         </div>
-
-        {confirmed && (
-          <div className="relative mt-10 overflow-hidden rounded-3xl bg-emerald-600 px-6 py-10 text-center text-white">
-            <h2 className="text-3xl font-semibold">Subscription confirmed!</h2>
-            <p className="mt-2 text-sm text-emerald-100">Your chef begins prep immediately.</p>
-            <div className="mt-6 flex justify-center">
-              <Button variant="secondary" onClick={() => setConfirmed(false)}>
-                Back to dashboard
-              </Button>
-            </div>
-            <div className="pointer-events-none absolute inset-0">
-              {[...Array(16)].map((_, i) => (
-                <span
-                  key={i}
-                  className="confetti-piece absolute"
-                  style={{
-                    left: `${(i * 6) % 100}%`,
-                    top: `${(i * 10) % 30}%`,
-                    backgroundColor: i % 2 === 0 ? "#2ecc71" : "#27ae60",
-                    animationDelay: `${i * 0.1}s`,
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-        )}
       </section>
     </Layout>
   );
 };
+
+const SummaryRow = ({ label, value }: { label: string; value: string }) => (
+  <div className="flex items-start justify-between gap-4 text-sm">
+    <span className="text-slate-500">{label}</span>
+    <span className="max-w-[65%] text-right font-medium text-slate-900">{value}</span>
+  </div>
+);
+
+const formatAddress = (address: Address) =>
+  `${address.street}, ${address.city}, ${address.state} - ${address.zipCode}`;
 
 export default Checkout;

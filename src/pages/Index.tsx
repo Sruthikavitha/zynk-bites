@@ -1,105 +1,158 @@
-import { Link } from "react-router-dom";
+import { type ReactNode } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
+import { Badge } from "@/components/ui/badge";
 import { ChefCard } from "@/components/zynk/ChefCard";
-import { Search, Sparkles } from "lucide-react";
+import { SubscriptionCard } from "@/components/zynk/SubscriptionCard";
+import {
+  ArrowRight,
+  CalendarDays,
+  ChefHat,
+  CircleCheckBig,
+  MapPin,
+  Search,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 
 const cuisines = [
-  { name: "South Indian", image: "https://images.unsplash.com/photo-1604908554302-7d8f33b41c6c?auto=format&fit=crop&w=600&q=80" },
-  { name: "North Indian", image: "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=600&q=80" },
-  { name: "Keto", image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80" },
-  { name: "High Protein", image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&q=80" },
-  { name: "Continental", image: "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=600&q=80" },
-  { name: "Vegan", image: "https://images.unsplash.com/photo-1543339308-43e59d6b73a6?auto=format&fit=crop&w=600&q=80" },
+  { name: "South Indian", note: "Comfort lunches and homestyle thalis" },
+  { name: "North Indian", note: "Rotis, curries, and weekly rotation menus" },
+  { name: "High Protein", note: "Fitness-friendly meal plans" },
+  { name: "Vegan", note: "Plant-forward daily subscriptions" },
+];
+
+const mealPlans = [
+  {
+    title: "Basic",
+    price: "INR 2,999",
+    description: "Perfect for busy weekdays",
+    features: ["Lunch plan", "20 meals / month", "Skip or swap before cutoff"],
+  },
+  {
+    title: "Standard",
+    price: "INR 4,499",
+    description: "Most loved subscription",
+    features: ["Lunch + dinner", "30 meals / month", "Address flexibility"],
+    highlighted: true,
+  },
+  {
+    title: "Premium",
+    price: "INR 5,999",
+    description: "Full-day meal coverage",
+    features: ["Breakfast + lunch + dinner", "Chef-curated rotations", "Priority support"],
+  },
 ];
 
 const trendingChefs = [
   {
-    id: "c1",
-    name: "Chef Neha",
+    id: "1",
+    name: "Chef Neha Sharma",
     rating: 4.9,
-    cuisineTags: ["South Indian", "Healthy"],
-    monthlyPrice: "?3,499",
-    image: "https://images.unsplash.com/photo-1528712306091-ed0763094c98?auto=format&fit=crop&w=800&q=80",
+    cuisineTags: ["South Indian", "Healthy", "Millet Meals"],
+    monthlyPrice: "From INR 3,499",
+    image: "https://images.unsplash.com/photo-1528712306091-ed0763094c98?auto=format&fit=crop&w=900&q=80",
     badge: "Top Rated",
   },
   {
-    id: "c2",
-    name: "Chef Arjun",
-    rating: 4.7,
-    cuisineTags: ["North Indian", "Keto"],
-    monthlyPrice: "?4,299",
-    image: "https://images.unsplash.com/photo-1528701800489-20be3c329d80?auto=format&fit=crop&w=800&q=80",
-    badge: "Trending",
-  },
-  {
-    id: "c3",
-    name: "Chef Mira",
+    id: "2",
+    name: "Chef Arjun Rao",
     rating: 4.8,
-    cuisineTags: ["Vegan", "Continental"],
-    monthlyPrice: "?3,999",
-    image: "https://images.unsplash.com/photo-1528712306091-ed0763094c98?auto=format&fit=crop&w=800&q=80",
-    badge: "New Chef",
+    cuisineTags: ["North Indian", "High Protein"],
+    monthlyPrice: "From INR 4,299",
+    image: "https://images.unsplash.com/photo-1528701800489-20be3c329d80?auto=format&fit=crop&w=900&q=80",
+    badge: "Popular Nearby",
   },
   {
-    id: "c4",
-    name: "Chef Rishi",
-    rating: 4.6,
-    cuisineTags: ["High Protein", "Fusion"],
-    monthlyPrice: "?4,799",
-    image: "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=800&q=80",
+    id: "3",
+    name: "Chef Mira Joseph",
+    rating: 4.7,
+    cuisineTags: ["Vegan", "Continental"],
+    monthlyPrice: "From INR 3,999",
+    image: "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=900&q=80",
+    badge: "New Chef",
   },
 ];
 
+const howItWorks = [
+  { title: "Choose a chef", text: "Compare cuisine, weekly menu, reviews, and service area." },
+  { title: "Customize your plan", text: "Pick duration, meals per day, address, and start date." },
+  { title: "Pay securely", text: "Activate your subscription with Razorpay checkout." },
+  { title: "Manage daily meals", text: "Skip, swap, pause, and change addresses from your dashboard." },
+];
+
 const Index = () => {
+  const navigate = useNavigate();
+
   return (
     <Layout>
-      <section className="relative overflow-hidden bg-gradient-to-br from-white via-emerald-50 to-white">
-        <div className="container px-4 py-20">
-          <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+      <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_right,_rgba(16,185,129,0.16),_transparent_32%),linear-gradient(180deg,#f7fff8_0%,#ffffff_48%,#f8fafc_100%)]">
+        <div className="container px-4 py-10 md:py-16">
+          <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
             <div>
-              <p className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-2 text-xs font-semibold uppercase text-emerald-700">
-                <Sparkles className="h-4 w-4" />
-                Subscription meals, tailored for you
-              </p>
-              <h1 className="mt-6 text-4xl font-semibold text-slate-900 md:text-5xl">
-                Discover chefs who cook the way you crave.
+              <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
+                <Sparkles className="mr-2 h-4 w-4" />
+                Monthly meals from trusted local chefs
+              </Badge>
+              <h1 className="mt-5 text-4xl font-semibold tracking-tight text-slate-900 md:text-6xl">
+                Subscription meals that feel as easy as Swiggy, but built for every day.
               </h1>
-              <p className="mt-4 text-lg text-slate-600">
-                ZYNK connects you with home chefs for fresh, healthy meals on a simple subscription.
+              <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
+                Discover home chefs, compare weekly menus, pick a monthly plan, and control every delivery from one clean dashboard.
               </p>
-              <div className="mt-6 flex flex-col gap-4 sm:flex-row">
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <div className="relative flex-1">
                   <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                  <Input
-                    placeholder="Find your chef"
-                    className="h-12 rounded-full pl-12"
-                  />
+                  <Input className="h-12 rounded-full pl-12" placeholder="Search by chef, cuisine, or locality" />
                 </div>
-                <Button className="h-12 rounded-full px-8">Search</Button>
+                <Button asChild className="h-12 rounded-full px-8">
+                  <Link to="/chefs">Explore chefs</Link>
+                </Button>
               </div>
-              <div className="mt-6 flex gap-4">
-                <Link to="/chefs" className="btn-outline">
-                  Explore chefs
-                </Link>
-                <Link to="/subscribe" className="btn-primary">
-                  Subscribe now
-                </Link>
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <Button asChild variant="outline" className="h-12 rounded-full px-8">
+                  <Link to="/login">OTP-style sign in</Link>
+                </Button>
+                <Button asChild className="h-12 rounded-full px-8">
+                  <Link to="/chef-partner">Become a chef partner</Link>
+                </Button>
+              </div>
+
+              <div className="mt-8 grid gap-3 sm:grid-cols-3">
+                {[
+                  { icon: ShieldCheck, title: "Secure checkout", note: "Razorpay payments" },
+                  { icon: MapPin, title: "Flexible addresses", note: "Home or work delivery" },
+                  { icon: CalendarDays, title: "Weekly menu visibility", note: "Know what is coming" },
+                ].map((item) => (
+                  <div key={item.title} className="rounded-[24px] border border-emerald-100 bg-white/80 px-5 py-4 shadow-soft">
+                    <item.icon className="h-5 w-5 text-emerald-600" />
+                    <p className="mt-3 text-sm font-semibold text-slate-900">{item.title}</p>
+                    <p className="mt-1 text-sm text-slate-500">{item.note}</p>
+                  </div>
+                ))}
               </div>
             </div>
+
             <div className="relative">
-              <div className="absolute -right-8 -top-8 h-56 w-56 rounded-full bg-emerald-100" />
-              <div className="relative rounded-3xl border border-emerald-100 bg-white p-4 shadow-card-hover">
+              <div className="rounded-[32px] border border-emerald-100 bg-white/90 p-4 shadow-card-hover">
                 <img
-                  src="https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=1200&q=80"
-                  alt="Chef curated meal"
-                  className="h-72 w-full rounded-2xl object-cover"
+                  src="https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=1400&q=80"
+                  alt="Subscription meals"
+                  className="h-[360px] w-full rounded-[26px] object-cover"
                 />
-                <div className="mt-4 rounded-2xl bg-emerald-50 p-4">
-                  <p className="text-sm font-semibold text-emerald-700">This week highlights</p>
-                  <p className="text-sm text-slate-600">3 chefs near you are accepting new subscribers.</p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl bg-emerald-50 px-4 py-4">
+                    <p className="text-xs uppercase tracking-[0.2em] text-emerald-600">This week</p>
+                    <p className="mt-2 text-lg font-semibold text-slate-900">3 chefs are onboarding new members nearby</p>
+                  </div>
+                  <div className="rounded-2xl bg-slate-50 px-4 py-4">
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Dashboard perks</p>
+                    <p className="mt-2 text-lg font-semibold text-slate-900">Skip, swap, pause, and address changes in one tap</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -108,40 +161,42 @@ const Index = () => {
       </section>
 
       <section className="container px-4 py-14">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <h2 className="section-title">Explore cuisines</h2>
-            <p className="text-sm text-slate-500">Pick a flavor, find your chef.</p>
+            <p className="text-xs uppercase tracking-[0.22em] text-emerald-600">Meal Plans</p>
+            <h2 className="mt-2 text-3xl font-semibold text-slate-900">Choose a monthly plan, then tailor it in checkout</h2>
           </div>
+          <p className="max-w-xl text-sm text-slate-500">
+            Duration, meals per day, start date, address, and payment all come together in one mobile-friendly checkout flow.
+          </p>
         </div>
-        <Carousel className="mt-8">
-          <CarouselContent>
-            {cuisines.map((cuisine) => (
-              <CarouselItem key={cuisine.name} className="basis-3/4 sm:basis-1/2 lg:basis-1/3">
-                <div className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-soft">
-                  <img src={cuisine.image} alt={cuisine.name} className="h-48 w-full object-cover" />
-                  <div className="p-4">
-                    <p className="text-sm font-semibold text-slate-900">{cuisine.name}</p>
-                  </div>
-                </div>
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-        </Carousel>
+        <div className="mt-8 grid gap-6 lg:grid-cols-3">
+          {mealPlans.map((plan) => (
+            <SubscriptionCard
+              key={plan.title}
+              title={plan.title}
+              price={plan.price}
+              description={plan.description}
+              features={plan.features}
+              highlighted={plan.highlighted}
+              onSelect={() => navigate("/chefs")}
+            />
+          ))}
+        </div>
       </section>
 
-      <section className="bg-emerald-50">
-        <div className="container px-4 py-16">
-          <div className="flex items-center justify-between gap-4">
+      <section className="bg-emerald-50/70">
+        <div className="container px-4 py-14">
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <h2 className="section-title">Trending chefs</h2>
-              <p className="text-sm text-slate-500">Hand-picked chefs with top subscriber ratings.</p>
+              <p className="text-xs uppercase tracking-[0.22em] text-emerald-600">Chef Discovery</p>
+              <h2 className="mt-2 text-3xl font-semibold text-slate-900">Top subscription chefs this week</h2>
             </div>
-            <Link to="/chefs" className="btn-outline">
-              View all
-            </Link>
+            <Button asChild variant="outline" className="rounded-full px-6">
+              <Link to="/chefs">See all chefs</Link>
+            </Button>
           </div>
-          <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-8 grid gap-6 lg:grid-cols-3">
             {trendingChefs.map((chef) => (
               <ChefCard key={chef.id} {...chef} />
             ))}
@@ -149,19 +204,78 @@ const Index = () => {
         </div>
       </section>
 
-      <section className="container px-4 py-16">
-        <div className="card-base flex flex-col items-center gap-6 bg-gradient-to-r from-emerald-600 to-green-500 px-8 py-12 text-center text-white">
-          <h3 className="text-3xl font-semibold">Ready to start your subscription?</h3>
-          <p className="max-w-2xl text-sm text-white/90">
-            Pick a chef, choose your plan, and schedule deliveries in minutes.
-          </p>
-          <Link to="/subscribe" className="rounded-full bg-white px-8 py-3 text-sm font-semibold text-emerald-700">
-            Subscribe now
-          </Link>
+      <section className="container px-4 py-14">
+        <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
+          <CardShell
+            title="Browse by cuisine"
+            description="A few popular starting points for your chef search."
+          >
+            <div className="grid gap-3">
+              {cuisines.map((cuisine) => (
+                <div key={cuisine.name} className="rounded-2xl border border-emerald-100 px-4 py-4">
+                  <p className="font-semibold text-slate-900">{cuisine.name}</p>
+                  <p className="mt-1 text-sm text-slate-500">{cuisine.note}</p>
+                </div>
+              ))}
+            </div>
+          </CardShell>
+
+          <CardShell
+            title="How the subscription flow works"
+            description="Built for repeat use, not one-off ordering."
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              {howItWorks.map((item, index) => (
+                <div key={item.title} className="rounded-2xl border border-slate-200 bg-white px-5 py-5">
+                  <p className="text-xs uppercase tracking-[0.2em] text-emerald-600">Step {index + 1}</p>
+                  <p className="mt-3 text-lg font-semibold text-slate-900">{item.title}</p>
+                  <p className="mt-2 text-sm text-slate-500">{item.text}</p>
+                </div>
+              ))}
+            </div>
+          </CardShell>
+        </div>
+      </section>
+
+      <section className="container px-4 pb-16">
+        <div className="overflow-hidden rounded-[32px] bg-gradient-to-r from-emerald-600 to-green-500 px-6 py-10 text-white shadow-card-hover md:px-10">
+          <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div>
+              <p className="text-xs uppercase tracking-[0.22em] text-emerald-100">Chef Flow</p>
+              <h3 className="mt-2 text-3xl font-semibold">Running a home kitchen? Build a real subscription business.</h3>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-white/85">
+                The partner flow now covers OTP onboarding, kitchen details, weekly menus, monthly pricing, documents, Razorpay payout setup, admin approval, and dashboard metrics.
+              </p>
+            </div>
+            <Button asChild variant="secondary" className="h-12 rounded-full px-8 text-sm font-semibold text-emerald-700">
+              <Link to="/chef-partner">
+                Explore chef onboarding
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
         </div>
       </section>
     </Layout>
   );
 };
+
+const CardShell = ({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) => (
+  <div className="rounded-[32px] border border-emerald-100 bg-white p-6 shadow-soft">
+    <div className="mb-5">
+      <p className="text-2xl font-semibold text-slate-900">{title}</p>
+      <p className="mt-2 text-sm text-slate-500">{description}</p>
+    </div>
+    {children}
+  </div>
+);
 
 export default Index;

@@ -21,6 +21,9 @@ export interface RegisterRequest {
   role?: 'customer' | 'chef';
   chefBusinessName?: string;
   phone?: string;
+  specialty?: string;
+  bio?: string;
+  serviceArea?: string;
 }
 
 // Request body for user login
