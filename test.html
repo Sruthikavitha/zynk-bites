@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZYNK Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .success {
+            color: #2d5a2d;
+            background: #e8f5e8;
+            padding: 10px 15px;
+            border-radius: 4px;
+            display: inline-block;
+            margin: 5px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎉 ZYNK Test Page</h1>
+        <p>If you can see this page, the basic setup is working!</p>
+        <div>
+            <span class="success">✅ HTML Working</span>
+            <span class="success">✅ CSS Working</span>
+            <span class="success">✅ Server Working</span>
+        </div>
+        <p>Port: <span id="port">Unknown</span></p>
+        <button onclick="testJS()">Test JavaScript</button>
+        <div id="jsTest"></div>
+    </div>
+
+    <script>
+        document.getElementById('port').textContent = window.location.port;
+        
+        function testJS() {
+            document.getElementById('jsTest').innerHTML = '<span class="success">✅ JavaScript Working</span>';
+        }
+        
+        // Auto-test JavaScript after 1 second
+        setTimeout(testJS, 1000);
+    </script>
+</body>
+</html>

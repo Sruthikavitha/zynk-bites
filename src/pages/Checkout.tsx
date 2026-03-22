@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { AddressSelector } from "@/components/zynk/AddressSelector";
 import { Calendar } from "@/components/ui/calendar";
+import PaymentModal from "@/components/PaymentModal";
 
 const steps = [
   "Select plan",
@@ -17,6 +18,9 @@ const Checkout = () => {
   const [address, setAddress] = useState("");
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [confirmed, setConfirmed] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState("Signature");
+  const [planPrice, setPlanPrice] = useState(4499);
 
   return (
     <Layout>
@@ -49,9 +53,16 @@ const Checkout = () => {
                     <Card key={plan} className="card-base p-4">
                       <p className="text-sm text-slate-500">{plan}</p>
                       <p className="mt-2 text-2xl font-semibold text-emerald-700">
-                        ?{[2999, 4499, 5999][index]}
+                        ₹{[2999, 4499, 5999][index]}
                       </p>
-                      <Button className="mt-4 w-full" onClick={() => setActiveStep(1)}>
+                      <Button 
+                        className="mt-4 w-full" 
+                        onClick={() => {
+                          setSelectedPlan(plan);
+                          setPlanPrice([2999, 4499, 5999][index]);
+                          setActiveStep(1);
+                        }}
+                      >
                         Select plan
                       </Button>
                     </Card>
@@ -91,7 +102,7 @@ const Checkout = () => {
                   <p className="text-sm text-slate-500">Secure checkout powered by Razorpay.</p>
                   <Button
                     className="mt-6 h-12 w-full rounded-full bg-emerald-600 text-white hover:bg-emerald-700"
-                    onClick={() => setConfirmed(true)}
+                    onClick={() => setShowPaymentModal(true)}
                   >
                     Pay with Razorpay
                   </Button>
@@ -104,7 +115,7 @@ const Checkout = () => {
               <div className="mt-4 space-y-3 text-sm text-slate-600">
                 <div className="flex items-center justify-between">
                   <span>Plan</span>
-                  <span>Signature</span>
+                  <span>{selectedPlan}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Start date</span>
@@ -116,7 +127,7 @@ const Checkout = () => {
                 </div>
                 <div className="border-t pt-3 text-base font-semibold text-slate-900 flex items-center justify-between">
                   <span>Total</span>
-                  <span>?4,499</span>
+                  <span>₹{planPrice.toLocaleString('en-IN')}</span>
                 </div>
               </div>
             </div>
@@ -148,6 +159,13 @@ const Checkout = () => {
             </div>
           </div>
         )}
+
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          amount={planPrice}
+          onSuccess={() => setConfirmed(true)}
+        />
       </section>
     </Layout>
   );

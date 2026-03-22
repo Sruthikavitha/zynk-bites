@@ -7,7 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { PageTransition } from "@/components/ui/PageTransition";
 import Index from "./pages/Index";
 import { Login } from "./pages/Login";
-import { Register } from "./pages/Register";
+import Register from "./pages/Register";
 import { Dashboard } from "./pages/Dashboard";
 import ChefDiscovery from "./pages/ChefDiscovery";
 import ChefDetail from "./pages/ChefDetail";

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZYNK Project Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .test-container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 600px;
+        }
+        h1 { color: #1f2937; margin-bottom: 20px; }
+        .status { 
+            background: #dcfce7; 
+            color: #166534; 
+            padding: 15px; 
+            border-radius: 10px; 
+            margin: 10px 0; 
+            font-weight: bold;
+        }
+        .error { 
+            background: #fef2f2; 
+            color: #dc2626; 
+            padding: 15px; 
+            border-radius: 10px; 
+            margin: 10px 0; 
+            font-weight: bold;
+        }
+        button {
+            background: #16a34a;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+        }
+        .results {
+            text-align: left;
+            margin-top: 20px;
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 ZYNK Project Test</h1>
+        
+        <div id="status" class="status">Testing project...</div>
+        
+        <button onclick="testProject()">🔍 Test Project</button>
+        <button onclick="testComponents()">🧩 Test Components</button>
+        <button onclick="testRoutes()">🛣️ Test Routes</button>
+        
+        <div id="results" class="results" style="display: none;">
+            <h3>Test Results:</h3>
+            <div id="test-output"></div>
+        </div>
+    </div>
+
+    <script>
+        function testProject() {
+            const status = document.getElementById('status');
+            const results = document.getElementById('results');
+            const output = document.getElementById('test-output');
+            
+            status.textContent = 'Testing project...';
+            results.style.display = 'block';
+            output.innerHTML = '';
+            
+            // Test 1: Check if we can access the main app
+            fetch('/src/App.tsx')
+                .then(response => {
+                    if (response.ok) {
+                        output.innerHTML += '<div class="status">✅ App.tsx accessible</div>';
+                        return fetch('/src/pages/Register.tsx');
+                    } else {
+                        throw new Error('App.tsx not accessible');
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        output.innerHTML += '<div class="status">✅ Register.tsx accessible</div>';
+                        return fetch('/src/components/PaymentModal.tsx');
+                    } else {
+                        throw new Error('Register.tsx not accessible');
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        output.innerHTML += '<div class="status">✅ PaymentModal.tsx accessible</div>';
+                        status.textContent = '✅ Project files accessible!';
+                        status.className = 'status';
+                    } else {
+                        throw new Error('PaymentModal.tsx not accessible');
+                    }
+                })
+                .catch(error => {
+                    output.innerHTML += '<div class="error">❌ Error: ' + error.message + '</div>';
+                    status.textContent = '❌ Project test failed';
+                    status.className = 'error';
+                });
+        }
+        
+        function testComponents() {
+            const status = document.getElementById('status');
+            const results = document.getElementById('results');
+            const output = document.getElementById('test-output');
+            
+            status.textContent = 'Testing components...';
+            results.style.display = 'block';
+            output.innerHTML = '';
+            
+            // Test if React components are loading
+            setTimeout(() => {
+                try {
+                    // Check if React is loaded
+                    if (typeof React !== 'undefined') {
+                        output.innerHTML += '<div class="status">✅ React loaded</div>';
+                    } else {
+                        output.innerHTML += '<div class="error">❌ React not loaded</div>';
+                    }
+                    
+                    // Check if root element exists
+                    const root = document.getElementById('root');
+                    if (root) {
+                        output.innerHTML += '<div class="status">✅ Root element found</div>';
+                    } else {
+                        output.innerHTML += '<div class="error">❌ Root element not found</div>';
+                    }
+                    
+                    status.textContent = '✅ Component test complete';
+                    status.className = 'status';
+                } catch (error) {
+                    output.innerHTML += '<div class="error">❌ Component test error: ' + error.message + '</div>';
+                    status.textContent = '❌ Component test failed';
+                    status.className = 'error';
+                }
+            }, 1000);
+        }
+        
+        function testRoutes() {
+            const status = document.getElementById('status');
+            const results = document.getElementById('results');
+            const output = document.getElementById('test-output');
+            
+            status.textContent = 'Testing routes...';
+            results.style.display = 'block';
+            output.innerHTML = '';
+            
+            // Test different routes
+            const routes = [
+                { path: '/', name: 'Home' },
+                { path: '/register', name: 'Register' },
+                { path: '/login', name: 'Login' },
+                { path: '/dashboard', name: 'Dashboard' },
+                { path: '/subscribe', name: 'Subscribe' }
+            ];
+            
+            let testCount = 0;
+            routes.forEach(route => {
+                fetch(route.path)
+                    .then(response => {
+                        testCount++;
+                        if (response.ok) {
+                            output.innerHTML += `<div class="status">✅ ${route.name}: ${response.status}</div>`;
+                        } else {
+                            output.innerHTML += `<div class="error">❌ ${route.name}: ${response.status}</div>`;
+                        }
+                        
+                        if (testCount === routes.length) {
+                            status.textContent = '✅ Route test complete';
+                            status.className = 'status';
+                        }
+                    })
+                    .catch(error => {
+                        testCount++;
+                        output.innerHTML += `<div class="error">❌ ${route.name}: Error</div>`;
+                        
+                        if (testCount === routes.length) {
+                            status.textContent = '✅ Route test complete';
+                            status.className = 'status';
+                        }
+                    });
+            });
+        }
+        
+        // Auto-test on load
+        setTimeout(() => {
+            console.log('🧪 Auto-testing ZYNK project...');
+            testProject();
+        }, 2000);
+    </script>
+</body>
+</html>

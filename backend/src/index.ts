@@ -46,7 +46,7 @@ app.use(express.json());
 
 app.use(
   cors({
-    origin: CLIENT_URL,
+    origin: process.env.NODE_ENV === 'production' ? CLIENT_URL : true,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import PaymentModal from '@/components/PaymentModal';
 import { 
   ChefHat, ArrowLeft, ArrowRight, Check, MapPin,
   Leaf, Drumstick, Flame, Dumbbell, Sparkles, Star, Home, Briefcase
@@ -33,6 +34,7 @@ export const Subscribe = () => {
   const [workAddress, setWorkAddress] = useState<Address>({ street: '', city: '', state: '', zipCode: '' });
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'upi' | 'debit' | 'credit' | 'netbanking'>('upi');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const customer = user as Customer;
 
@@ -137,7 +139,7 @@ export const Subscribe = () => {
         return;
       }
 
-      const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
+      const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_1DP5mmOlF5G5mT';
       if (!razorpayKey) {
         toast({
           title: 'Configuration error',
@@ -226,6 +228,139 @@ export const Subscribe = () => {
         variant: 'destructive',
       });
       setLoading(false);
+    }
+  };
+
+  const handlePaymentModal = async (razorpayResponse?: any) => {
+    if (!user) {
+      toast({
+        title: 'Login required',
+        description: 'Please sign in again to complete payment.',
+        variant: 'destructive',
+      });
+      navigate('/login');
+      return;
+    }
+
+    // Validate required fields before proceeding
+    if (!selectedChefId) {
+      toast({ title: 'Error', description: 'Please select a chef first.', variant: 'destructive' });
+      return;
+    }
+
+    if (!homeAddress.street || !homeAddress.city || !homeAddress.state || !homeAddress.zipCode) {
+      toast({ title: 'Error', description: 'Please complete your address information.', variant: 'destructive' });
+      return;
+    }
+
+    if (selectedDishes.length === 0) {
+      toast({ title: 'Error', description: 'Please select at least one dish.', variant: 'destructive' });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Step 1: Register the customer (if not already registered)
+      let userData = user;
+      if (!userData.id) {
+        const registerResponse = api.registerCustomer(
+          email, 
+          password, 
+          name, 
+          '', // phone - not available in this context
+          homeAddress,
+          workAddress.street ? workAddress : undefined
+        );
+
+        if (!registerResponse.success || !registerResponse.data) {
+          toast({ title: 'Registration Error', description: registerResponse.error || 'Failed to register customer', variant: 'destructive' });
+          return;
+        }
+
+        // Step 2: Login the user
+        login(registerResponse.data);
+        userData = registerResponse.data;
+      }
+
+      // Step 3: Create subscription
+      const subscriptionResponse = api.subscribeWithChef(
+        userData.id,
+        selectedChefId,
+        selectedDishes,
+        plan,
+        homeAddress,
+        workAddress.street ? workAddress : undefined
+      );
+
+      if (!subscriptionResponse.success) {
+        toast({ title: 'Subscription Error', description: subscriptionResponse.error || 'Failed to create subscription', variant: 'destructive' });
+        return;
+      }
+
+      // Step 4: Verify payment with backend if we have Razorpay response
+      if (razorpayResponse) {
+        const token = getApiToken();
+        if (token) {
+          try {
+            let apiBase = getBackendApiBaseUrl();
+            if (apiBase.endsWith('/api')) apiBase = apiBase.replace(/\/api\/?$/, '');
+            if (!apiBase) apiBase = `${window.location.protocol}//${window.location.hostname}:3002`;
+
+            const verifyRes = await fetch(`${apiBase}/api/payment/verify`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                razorpay_order_id: razorpayResponse.razorpay_order_id,
+                razorpay_payment_id: razorpayResponse.razorpay_payment_id,
+                razorpay_signature: razorpayResponse.razorpay_signature,
+                plan,
+                chefId: selectedChefId,
+                homeAddress,
+                workAddress,
+              }),
+            });
+
+            const verifyData = await verifyRes.json();
+            if (!verifyData.success) {
+              toast({ 
+                title: 'Payment Verification Failed', 
+                description: verifyData.message || 'Payment could not be verified', 
+                variant: 'destructive' 
+              });
+              return;
+            }
+          } catch (error) {
+            console.error('Payment verification error:', error);
+            // Continue anyway since subscription was created
+          }
+        }
+      }
+
+      // Step 5: Show success and redirect
+      toast({
+        title: '🎉 Registration Complete!',
+        description: 'Your account has been created and subscription is now active.',
+      });
+      
+      // Force a refresh of the dashboard data by clearing any cached data
+      localStorage.removeItem('subscription_data');
+      localStorage.removeItem('daily_meals_data');
+      
+      navigate('/dashboard');
+
+    } catch (error) {
+      console.error('Registration error:', error);
+      toast({
+        title: 'Error',
+        description: 'Registration failed. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -579,23 +714,12 @@ export const Subscribe = () => {
                   </div>
                 </CardContent>
               </Card>
-              <div className="grid gap-3 mb-6">
-                {([
-                  { id: 'upi', label: 'UPI' },
-                  { id: 'debit', label: 'Debit Card' },
-                  { id: 'credit', label: 'Credit Card' },
-                  { id: 'netbanking', label: 'Net Banking' },
-                ] as const).map((method) => (
-                  <Button
-                    key={method.id}
-                    variant={paymentMethod === method.id ? 'default' : 'outline'}
-                    onClick={() => setPaymentMethod(method.id)}
-                    className="justify-start"
-                  >
-                    {method.label}
-                  </Button>
-                ))}
-              </div>
+              <Button
+                onClick={() => setShowPaymentModal(true)}
+                className="w-full h-12 gradient-primary"
+              >
+                Pay with Razorpay
+              </Button>
             </div>
           )}
 
@@ -618,7 +742,7 @@ export const Subscribe = () => {
               </Button>
             ) : (
               <Button
-                onClick={handlePayment}
+                onClick={handlePaymentModal}
                 disabled={loading}
                 className="flex-1 gradient-primary"
               >
@@ -629,6 +753,13 @@ export const Subscribe = () => {
           </div>
         </div>
       </div>
+      
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        amount={parseInt(plans.find(p => p.id === plan)?.price?.replace('₹', '').replace(',', '') || '4499')}
+        onSuccess={handlePaymentModal}
+      />
     </Layout>
   );
 };

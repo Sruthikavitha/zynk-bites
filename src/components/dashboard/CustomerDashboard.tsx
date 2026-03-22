@@ -133,7 +133,16 @@ export const CustomerDashboard = () => {
   useEffect(() => {
     if (user) void loadData();
     const interval = setInterval(() => setCanModify(api.canModifyMeal()), 1000);
-    return () => clearInterval(interval);
+    
+    // Add a refresh mechanism to check for new subscriptions after payment
+    const refreshInterval = setInterval(() => {
+      if (user) void loadData();
+    }, 5000); // Check every 5 seconds for new subscription
+    
+    return () => {
+      clearInterval(interval);
+      clearInterval(refreshInterval);
+    };
   }, [user]);
 
   const mapBackendPlan = (planName: string): PlanType => {
@@ -623,10 +632,23 @@ export const CustomerDashboard = () => {
         <div className="max-w-5xl mx-auto">
           {/* Welcome Header */}
           <div className="animate-slide-up">
-            <h1 className="section-title">Welcome back, {user?.name}!</h1>
-            <p className="mt-2 text-sm text-slate-500">
-              Your subscription schedule, chef, and meals - all in one place.
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="section-title">Welcome back, {user?.name}!</h1>
+                <p className="mt-2 text-sm text-slate-500">
+                  Your subscription schedule, chef, and meals - all in one place.
+                </p>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => loadData()}
+                className="flex items-center gap-2"
+              >
+                <Settings className="w-4 h-4" />
+                Refresh
+              </Button>
+            </div>
           </div>
 
           <CutoffBanner />

@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import * as api from '@/services/api';
+import { getApiToken, getBackendApiBaseUrl } from '@/services/backend';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import PaymentModal from '@/components/PaymentModal';
 import { User, ChefHat, Eye, EyeOff, Home, Briefcase, MapPin, ChevronRight, ChevronLeft } from 'lucide-react';
 import type { Address, PlanType } from '@/types';
 
@@ -94,6 +96,7 @@ export const Register = () => {
   const [selectedChefId, setSelectedChefId] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<PlanType>('standard');
   const [paymentMethod, setPaymentMethod] = useState<'upi' | 'debit' | 'credit' | 'netbanking'>('upi');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   
   // Chef info
   const [specialty, setSpecialty] = useState('');
@@ -187,43 +190,137 @@ export const Register = () => {
       return;
     }
 
+    // Open PaymentModal instead of direct registration
+    console.log('Opening PaymentModal for payment processing');
+    setShowPaymentModal(true);
+  };
+
+  const handlePaymentModal = async (razorpayResponse?: any) => {
+    if (!selectedChefId) {
+      toast({ title: 'Select a chef', description: 'Choose a chef before continuing to payment.', variant: 'destructive' });
+      return;
+    }
+
+    // Validate required fields before proceeding
+    if (!homeAddress.street || !homeAddress.city || !homeAddress.state || !homeAddress.zipCode) {
+      toast({ title: 'Error', description: 'Please complete your address information.', variant: 'destructive' });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
+      // Step 1: Register the customer
       const registerResponse = api.registerCustomer(
         email, 
         password, 
         name, 
-        phone, 
-        homeAddress.street ? homeAddress : undefined,
+        phone,
+        homeAddress,
         workAddress.street ? workAddress : undefined
       );
 
       if (!registerResponse.success || !registerResponse.data) {
-        toast({ title: 'Error', description: registerResponse.error, variant: 'destructive' });
+        toast({ title: 'Registration Error', description: registerResponse.error || 'Failed to register customer', variant: 'destructive' });
         return;
       }
 
       login(registerResponse.data);
 
-      const subscriptionResponse = api.subscribeWithChef(
+      // Step 3: Create subscription
+      const subscriptionResponse = await api.subscribeWithChef(
         registerResponse.data.id,
         selectedChefId,
-        [],
+        [], // No dishes selected at this stage
         selectedPlan,
         homeAddress,
         workAddress.street ? workAddress : undefined
       );
 
       if (!subscriptionResponse.success) {
-        toast({ title: 'Error', description: subscriptionResponse.error, variant: 'destructive' });
+        toast({ title: 'Subscription Error', description: subscriptionResponse.error || 'Failed to create subscription', variant: 'destructive' });
         return;
       }
 
-      toast({ title: 'Payment successful', description: 'Subscription activated.' });
+      // Step 4: Verify payment with backend if we have Razorpay response
+      if (razorpayResponse) {
+        const token = getApiToken();
+        if (token) {
+          try {
+            let apiBase = getBackendApiBaseUrl();
+            if (apiBase.endsWith('/api')) apiBase = apiBase.replace(/\/api\/?$/, '');
+            if (!apiBase) apiBase = `${window.location.protocol}//${window.location.hostname}:3002`;
+
+            const verifyRes = await fetch(`${apiBase}/api/payment/verify`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                razorpay_payment_id: razorpayResponse.razorpay_payment_id,
+                razorpay_order_id: razorpayResponse.razorpay_order_id,
+                razorpay_signature: razorpayResponse.razorpay_signature,
+                plan: selectedPlan,
+                chefId: selectedChefId,
+                homeAddress: homeAddress,
+                workAddress: workAddress.street ? workAddress : undefined,
+              }),
+            });
+
+            const verifyData = await verifyRes.json();
+
+            if (!verifyData.success) {
+              throw new Error(verifyData.message || 'Payment verification failed');
+            }
+
+            toast({ title: 'Payment Verified', description: 'Your payment has been successfully verified.' });
+
+          } catch (error) {
+            console.error('Payment verification error:', error);
+            toast({ title: 'Payment Verification Error', description: error.message || 'Failed to verify payment.', variant: 'destructive' });
+            return;
+          }
+        }
+      }
+
+      // Step 5: Show success and redirect
+      toast({
+        title: '🎉 Registration Complete!',
+        description: 'Your account has been created and subscription is now active.',
+      });
+      
+      // Force a refresh of the dashboard data by clearing any cached data
+      localStorage.removeItem('subscription_data');
+      localStorage.removeItem('daily_meals_data');
+      
       navigate('/dashboard');
+
+    } catch (error) {
+      console.error('Registration/Subscription error:', error);
+      toast({ title: 'Error', description: error.message || 'An unexpected error occurred.', variant: 'destructive' });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const planOptions: { id: PlanType; name: string; slots: string; price: string }[] = [
+    { id: 'basic', name: 'Basic', slots: 'Lunch', price: '₹2,999' },
+    { id: 'standard', name: 'Standard', slots: 'Lunch + Dinner', price: '₹4,499' },
+    { id: 'premium', name: 'Premium', slots: 'Breakfast + Lunch + Dinner', price: '₹5,999' },
+  ];
+
+  const selectedChef = chefs.find((chef) => chef.id === selectedChefId) || null;
+  const selectedPlanOption = planOptions.find((plan) => plan.id === selectedPlan) || planOptions[0];
+
+  const canProceed = () => {
+    switch (step) {
+      case 'basic': return !!(name && email && password);
+      case 'addresses': return !!(homeAddress.street && homeAddress.city && homeAddress.state && homeAddress.zipCode);
+      case 'chef': return !!selectedChefId;
+      case 'payment': return !!(selectedChefId && homeAddress.street && homeAddress.city && homeAddress.state && homeAddress.zipCode);
+      case 'kitchen': return !!(name && email && password && specialty);
+      default: return true;
     }
   };
 
@@ -540,35 +637,13 @@ export const Register = () => {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="font-chef text-xs tracking-wider text-charcoal">PAYMENT METHOD</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { id: 'upi', label: 'UPI' },
-                      { id: 'debit', label: 'Debit Card' },
-                      { id: 'credit', label: 'Credit Card' },
-                      { id: 'netbanking', label: 'Net Banking' },
-                    ].map((method) => (
-                      <Button
-                        key={method.id}
-                        type="button"
-                        variant={paymentMethod === method.id ? 'default' : 'outline'}
-                        onClick={() => setPaymentMethod(method.id as typeof paymentMethod)}
-                        className="justify-start"
-                      >
-                        {method.label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-
                 <div className="flex gap-3 pt-4">
                   <Button type="button" variant="outline" onClick={() => setStep('chef')} className="flex-1 font-chef tracking-wider text-xs">
                     <ChevronLeft className="w-4 h-4 mr-2" />
                     BACK
                   </Button>
                   <Button type="submit" className="flex-1 btn-green" disabled={isLoading}>
-                    {isLoading ? 'PROCESSING...' : 'PAY & ACTIVATE'}
+                    {isLoading ? 'PROCESSING...' : 'PAY WITH RAZORPAY'}
                   </Button>
                 </div>
               </form>
@@ -679,6 +754,15 @@ export const Register = () => {
         </Card>
       </div>
     </div>
-  </Layout>
-);
+      
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        amount={parseInt(selectedPlanOption.price?.replace('₹', '').replace(',', '') || '4499')}
+        onSuccess={handlePaymentModal}
+      />
+    </Layout>
+  );
 };
+
+export default Register;
