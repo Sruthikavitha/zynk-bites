@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { getActiveSubscription, createSubscription } from '../models/subscriptionQueries.js';
 import { getNextBillingDate, isSkipSwapLockedByTime } from '../utils/subscriptionUtils.js';
 import { ensureUpcomingMealsForCustomer } from '../services/mealPlannerService.js';
+import { notifyPaymentFailure, notifySubscriptionSuccess } from '../services/notificationService.js';
 
 const getRazorpay = () => {
   return new Razorpay({
@@ -40,6 +41,11 @@ export const createOrder = async (req: Request, res: Response) => {
       keyId: process.env.RAZORPAY_KEY_ID,
     });
   } catch (error) {
+    await notifyPaymentFailure({
+      customerId: req.user?.userId,
+      planName: req.body?.plan || null,
+      reason: 'Unable to create the Razorpay order.',
+    });
     res.status(500).json({ success: false, message: 'Failed to create order' });
   }
 };
@@ -71,6 +77,11 @@ export const verifyPayment = async (req: Request, res: Response) => {
       .digest('hex');
 
     if (expectedSignature !== razorpay_signature) {
+      await notifyPaymentFailure({
+        customerId: req.user?.userId,
+        planName: plan || null,
+        reason: 'Payment signature verification failed.',
+      });
       return res.status(400).json({ success: false, message: 'Invalid payment signature' });
     }
 
@@ -117,6 +128,13 @@ export const verifyPayment = async (req: Request, res: Response) => {
       console.error('Failed to seed meals after payment:', seedError);
     }
 
+    await notifySubscriptionSuccess({
+      customerId: userId,
+      chefId: chefIdValue,
+      planName: subscription.planName,
+      paymentId: razorpay_payment_id,
+    });
+
     res.json({
       success: true,
       message: 'Payment verified',
@@ -130,6 +148,11 @@ export const verifyPayment = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Payment verification error:', error);
+    await notifyPaymentFailure({
+      customerId: req.user?.userId,
+      planName: req.body?.plan || null,
+      reason: 'Payment verification failed on the server.',
+    });
     res.status(500).json({ success: false, message: 'Payment verification failed' });
   }
 };

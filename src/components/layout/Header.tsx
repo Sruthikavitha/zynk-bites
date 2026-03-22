@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { clearApiToken } from '@/services/backend';
+import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { Button } from '@/components/ui/button';
 import {
   UtensilsCrossed,
@@ -9,7 +10,6 @@ import {
   ChefHat,
   Truck,
   ShieldCheck,
-  Menu
 } from 'lucide-react';
 
 const roleIcons = {
@@ -64,6 +64,7 @@ export const Header = () => {
           
           {isAuthenticated && user ? (
             <>
+              <NotificationCenter />
               <div className="flex items-center gap-3 px-4 py-2 rounded-sm bg-secondary border border-gray-200">
                 <div className={`w-8 h-8 rounded-sm ${roleColors[user.role]} flex items-center justify-center`}>
                   <RoleIcon className="w-4 h-4 text-white" />

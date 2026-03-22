@@ -7,6 +7,24 @@ export const userRoleEnum = pgEnum('user_role', ['customer', 'chef', 'delivery',
 // Enum for subscription status
 export const subscriptionStatusEnum = pgEnum('subscription_status', ['active', 'paused', 'cancelled']);
 
+// Notification delivery and queue enums
+export const notificationTypeEnum = pgEnum('notification_type', [
+  'subscription_success',
+  'payment_failed',
+  'meal_reminder',
+  'daily_meal_count',
+  'skip_swap_deadline',
+  'delivery_update',
+  'new_subscriber',
+  'chef_menu_update',
+  'chef_pending_approval',
+  'chef_approved',
+  'system_alert',
+]);
+export const notificationPriorityEnum = pgEnum('notification_priority', ['normal', 'critical']);
+export const notificationStatusEnum = pgEnum('notification_status', ['queued', 'processing', 'delivered', 'failed']);
+export const notificationChannelEnum = pgEnum('notification_channel', ['in_app']);
+
 // Users table: Stores customer, chef, delivery, and admin accounts
 export const users = pgTable(
   'users',
@@ -186,11 +204,46 @@ export const reviews = pgTable(
   })
 );
 
+// Notifications table: persistent inbox + async queue state
+export const notifications = pgTable(
+  'notifications',
+  {
+    id: serial('id').primaryKey(),
+    recipientId: integer('recipient_id').notNull(),
+    recipientRole: userRoleEnum('recipient_role').notNull(),
+    type: notificationTypeEnum('type').notNull(),
+    channel: notificationChannelEnum('channel').default('in_app').notNull(),
+    priority: notificationPriorityEnum('priority').default('normal').notNull(),
+    title: varchar('title', { length: 255 }).notNull(),
+    message: text('message').notNull(),
+    actionUrl: text('action_url'),
+    metadata: jsonb('metadata').default({}).notNull(),
+    status: notificationStatusEnum('status').default('queued').notNull(),
+    scheduledFor: timestamp('scheduled_for').defaultNow().notNull(),
+    processingStartedAt: timestamp('processing_started_at'),
+    lastAttemptAt: timestamp('last_attempt_at'),
+    attempts: integer('attempts').default(0).notNull(),
+    maxAttempts: integer('max_attempts').default(3).notNull(),
+    deliveredAt: timestamp('delivered_at'),
+    readAt: timestamp('read_at'),
+    errorMessage: text('error_message'),
+    dedupeKey: varchar('dedupe_key', { length: 255 }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    recipientIdx: index('notifications_recipient_idx').on(table.recipientId, table.createdAt),
+    queueIdx: index('notifications_queue_idx').on(table.status, table.priority, table.scheduledFor),
+    dedupeKeyUnique: unique('notifications_dedupe_key_unique').on(table.dedupeKey),
+  })
+);
+
 // Define relationships between tables
 export const userRelations = relations(users, ({ many }) => ({
   // One user can have multiple subscriptions
   subscriptions: many(subscriptions),
   dishes: many(dishes),
+  notifications: many(notifications),
 }));
 
 export const subscriptionRelations = relations(subscriptions, ({ one }) => ({
@@ -204,6 +257,13 @@ export const subscriptionRelations = relations(subscriptions, ({ one }) => ({
 export const dishRelations = relations(dishes, ({ one }) => ({
   chef: one(users, {
     fields: [dishes.chefId],
+    references: [users.id],
+  }),
+}));
+
+export const notificationRelations = relations(notifications, ({ one }) => ({
+  recipient: one(users, {
+    fields: [notifications.recipientId],
     references: [users.id],
   }),
 }));
@@ -227,6 +287,24 @@ export type NewOrder = typeof orders.$inferInsert;
 export type Review = typeof reviews.$inferSelect;
 export type NewReview = typeof reviews.$inferInsert;
 
+export type Notification = typeof notifications.$inferSelect;
+export type NewNotification = typeof notifications.$inferInsert;
+
 // Enum types for TypeScript
 export type UserRole = 'customer' | 'chef' | 'delivery' | 'admin';
 export type SubscriptionStatus = 'active' | 'paused' | 'cancelled';
+export type NotificationType =
+  | 'subscription_success'
+  | 'payment_failed'
+  | 'meal_reminder'
+  | 'daily_meal_count'
+  | 'skip_swap_deadline'
+  | 'delivery_update'
+  | 'new_subscriber'
+  | 'chef_menu_update'
+  | 'chef_pending_approval'
+  | 'chef_approved'
+  | 'system_alert';
+export type NotificationPriority = 'normal' | 'critical';
+export type NotificationStatus = 'queued' | 'processing' | 'delivered' | 'failed';
+export type NotificationChannel = 'in_app';

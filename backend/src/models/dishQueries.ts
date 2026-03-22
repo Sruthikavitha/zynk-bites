@@ -23,3 +23,9 @@ export const insertDishes = async (list: NewDish[]): Promise<Dish[]> => {
   const result = await db.insert(dishes).values(list).returning();
   return result;
 };
+
+export const createDish = async (dish: NewDish): Promise<Dish> => {
+  const db = getDb();
+  const result = await db.insert(dishes).values(dish).returning();
+  return result[0];
+};

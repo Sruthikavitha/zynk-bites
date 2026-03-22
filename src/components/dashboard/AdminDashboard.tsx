@@ -2,6 +2,7 @@
 import * as api from '@/services/api';
 import * as db from '@/services/db';
 import { Button } from '@/components/ui/button';
+import { NotificationHighlightsCard } from '@/components/notifications/NotificationHighlightsCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -248,6 +249,7 @@ export const AdminDashboard = () => {
           </div>
 
         <CutoffBanner />
+        <NotificationHighlightsCard role="admin" />
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           <StatCard icon={Users} value={stats.totalCustomers} label="Members" />

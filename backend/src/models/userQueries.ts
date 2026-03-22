@@ -1,6 +1,6 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { getDb } from '../config/database.js';
-import { users, NewUser, User } from './schema.js';
+import { users, NewUser, User, UserRole } from './schema.js';
 
 // Fetch user by email (for login lookup)
 export const getUserByEmail = async (email: string): Promise<User | undefined> => {
@@ -40,4 +40,13 @@ export const deleteUser = async (id: number): Promise<void> => {
 export const emailExists = async (email: string): Promise<boolean> => {
   const user = await getUserByEmail(email);
   return !!user;
+};
+
+export const getUsersByRole = async (role: UserRole, onlyActive = true): Promise<User[]> => {
+  const db = getDb();
+  if (!onlyActive) {
+    return await db.select().from(users).where(eq(users.role, role));
+  }
+
+  return await db.select().from(users).where(and(eq(users.role, role), eq(users.isActive, true)));
 };
