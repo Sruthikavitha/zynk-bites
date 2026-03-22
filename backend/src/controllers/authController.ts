@@ -3,6 +3,7 @@ import { hashPassword, comparePassword } from '../utils/bcrypt.js';
 import { signToken } from '../utils/jwt.js';
 import { getUserByEmail, createUser, emailExists } from '../models/userQueries.js';
 import { RegisterRequest, LoginRequest, AuthResponse } from '../types/auth.js';
+import { notifyChefApprovalRequested } from '../services/notificationService.js';
 
 // Register a new user (customer or chef)
 export const register = async (req: express.Request, res: express.Response): Promise<void> => {
@@ -54,6 +55,10 @@ export const register = async (req: express.Request, res: express.Response): Pro
       phone: phone || null,
       isActive: isChefRegistration ? false : true,
     });
+
+    if (isChefRegistration) {
+      await notifyChefApprovalRequested(newUser.id, newUser.fullName);
+    }
 
     // Return success response
     const response: AuthResponse = {

@@ -3,6 +3,7 @@ import { getAllDishes, getDishesByChefId } from '../models/dishQueries.js';
 import { getDailyMealsBySubscriptionId, createDailyMeal, updateDailyMeal } from '../models/dailyMealQueries.js';
 import { getOrdersByCustomerId, getOrderByDailyMealId, createOrder, updateOrder } from '../models/orderQueries.js';
 import { getActiveSubscription } from '../models/subscriptionQueries.js';
+import { notifyDeliveryUpdate } from './notificationService.js';
 
 type MealSlot = 'breakfast' | 'lunch' | 'dinner';
 
@@ -187,6 +188,12 @@ export const refreshDeliveredOrdersForCustomer = async (customerId: number) => {
         deliveredAt: new Date(),
       });
       await updateDailyMeal(order.dailyMealId, { status: 'delivered', isFinalized: true });
+      await notifyDeliveryUpdate({
+        customerId: order.customerId,
+        orderId: order.id,
+        mealName: order.mealName,
+        status: 'delivered',
+      });
     }
   }
 };

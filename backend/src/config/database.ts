@@ -43,3 +43,10 @@ export const getDb = () => {
   }
   return db;
 };
+
+export const getPool = () => {
+  if (!pool) {
+    throw new Error('Database pool not initialized. Call initializeDatabase() first.');
+  }
+  return pool;
+};

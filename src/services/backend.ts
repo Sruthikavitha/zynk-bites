@@ -1,4 +1,4 @@
-import type { Chef, DailyMeal, Dish, Meal, Order, Review } from '@/types';
+import type { AppNotification, Chef, DailyMeal, Dish, Meal, Order, Review } from '@/types';
 
 const normalizeApiBase = (value?: string) => {
   const trimmed = value?.trim();
@@ -141,11 +141,20 @@ export type BackendChefProfile = {
   avgRating: number;
 };
 
+export type BackendNotification = AppNotification;
+
 type BackendAuthResponse = {
   success: boolean;
   message?: string;
   token?: string;
   user?: BackendAuthUser;
+};
+
+type BackendNotificationsResponse = {
+  success: boolean;
+  notifications?: BackendNotification[];
+  unreadCount?: number;
+  message?: string;
 };
 
 export const loginUser = async (email: string, password: string) => {
@@ -252,10 +261,158 @@ export const getAllDishes = async () => {
   return data.data;
 };
 
+export const getChefWorkspaceDishes = async (token: string) => {
+  const { response, data, error } = await requestJson<{ success: boolean; data?: Dish[]; message?: string }>(
+    '/api/chef/dishes',
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+
+  if (!response || !data) {
+    return { success: false, dishes: null as Dish[] | null, message: error || getNetworkErrorMessage() };
+  }
+
+  if (!response.ok || !data.success || !Array.isArray(data.data)) {
+    return { success: false, dishes: null as Dish[] | null, message: data.message || 'Failed to load chef dishes' };
+  }
+
+  return { success: true, dishes: data.data };
+};
+
+export const createChefWorkspaceDish = async (
+  token: string,
+  payload: {
+    name: string;
+    description: string;
+    category: 'veg' | 'non-veg';
+    nutritionalInfo: { calories: number; protein: number; carbs: number; fat: number };
+    allowsCustomization: boolean;
+    customizationOptions?: { id: string; name: string; type: 'add' | 'remove' | 'adjust' }[];
+  }
+) => {
+  const { response, data, error } = await requestJson<{ success: boolean; data?: Dish; message?: string }>(
+    '/api/chef/dishes',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  if (!response || !data) {
+    return { success: false, dish: null as Dish | null, message: error || getNetworkErrorMessage() };
+  }
+
+  if (!response.ok || !data.success || !data.data) {
+    return { success: false, dish: null as Dish | null, message: data.message || 'Failed to add dish' };
+  }
+
+  return { success: true, dish: data.data };
+};
+
 export const getAllMeals = async () => {
   const { response, data } = await requestJson<{ success: boolean; data?: Meal[] }>('/api/meals');
   if (!response?.ok || !data?.success || !Array.isArray(data.data)) return null;
   return data.data;
+};
+
+export const getMyNotifications = async (token: string, limit = 25) => {
+  const { response, data, error } = await requestJson<BackendNotificationsResponse>(
+    `/api/notifications?limit=${limit}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+
+  if (!response || !data) {
+    return {
+      success: false,
+      notifications: [] as BackendNotification[],
+      unreadCount: 0,
+      message: error || getNetworkErrorMessage(),
+    };
+  }
+
+  if (!response.ok || !data.success) {
+    return {
+      success: false,
+      notifications: [] as BackendNotification[],
+      unreadCount: 0,
+      message: data.message || 'Failed to load notifications',
+    };
+  }
+
+  return {
+    success: true,
+    notifications: Array.isArray(data.notifications) ? data.notifications : [],
+    unreadCount: typeof data.unreadCount === 'number' ? data.unreadCount : 0,
+  };
+};
+
+export const markMyNotificationAsRead = async (token: string, notificationId: string) => {
+  const { response, data, error } = await requestJson<{
+    success: boolean;
+    notification?: BackendNotification;
+    message?: string;
+  }>(`/api/notifications/${notificationId}/read`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response || !data) {
+    return {
+      success: false,
+      message: error || getNetworkErrorMessage(),
+    };
+  }
+
+  if (!response.ok || !data.success) {
+    return {
+      success: false,
+      message: data.message || 'Failed to update notification',
+    };
+  }
+
+  return {
+    success: true,
+    notification: data.notification,
+  };
+};
+
+export const markAllMyNotificationsAsRead = async (token: string) => {
+  const { response, data, error } = await requestJson<{
+    success: boolean;
+    updatedCount?: number;
+    message?: string;
+  }>('/api/notifications/read-all', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response || !data) {
+    return {
+      success: false,
+      updatedCount: 0,
+      message: error || getNetworkErrorMessage(),
+    };
+  }
+
+  if (!response.ok || !data.success) {
+    return {
+      success: false,
+      updatedCount: 0,
+      message: data.message || 'Failed to mark notifications as read',
+    };
+  }
+
+  return {
+    success: true,
+    updatedCount: typeof data.updatedCount === 'number' ? data.updatedCount : 0,
+  };
 };
 
 type BackendActionResponse = {

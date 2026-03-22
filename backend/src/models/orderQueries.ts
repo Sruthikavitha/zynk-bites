@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm';
+import { asc, and, eq } from 'drizzle-orm';
 import { getDb } from '../config/database.js';
 import { orders, Order, NewOrder } from './schema.js';
 
@@ -21,6 +21,20 @@ export const getOrderByDailyMealId = async (dailyMealId: number): Promise<Order 
   const db = getDb();
   const result = await db.select().from(orders).where(eq(orders.dailyMealId, dailyMealId)).limit(1);
   return result[0];
+};
+
+export const getOrdersByDate = async (date: string): Promise<Order[]> => {
+  const db = getDb();
+  return await db.select().from(orders).where(eq(orders.date, date)).orderBy(asc(orders.createdAt));
+};
+
+export const getOrdersByChefAndDate = async (chefId: number, date: string): Promise<Order[]> => {
+  const db = getDb();
+  return await db
+    .select()
+    .from(orders)
+    .where(and(eq(orders.chefId, chefId), eq(orders.date, date)))
+    .orderBy(asc(orders.createdAt));
 };
 
 export const createOrder = async (orderData: NewOrder): Promise<Order> => {

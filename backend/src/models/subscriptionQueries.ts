@@ -26,6 +26,14 @@ export const getActiveSubscription = async (userId: number): Promise<Subscriptio
   return result[0];
 };
 
+export const getActiveSubscriptions = async (): Promise<Subscription[]> => {
+  const db = getDb();
+  return await db
+    .select()
+    .from(subscriptions)
+    .where(eq(subscriptions.status, 'active'));
+};
+
 // Create a new subscription
 export const createSubscription = async (subData: NewSubscription): Promise<Subscription> => {
   const db = getDb();

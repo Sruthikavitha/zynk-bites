@@ -35,6 +35,7 @@ import { ReviewPrompt } from '@/components/review/ReviewPrompt';
 import { StarRating } from '@/components/review/ReviewForm';
 import { MealRecommendationWidget } from '@/components/MealRecommendationWidget';
 import { MealCard } from '@/components/MealCard';
+import { NotificationHighlightsCard } from '@/components/notifications/NotificationHighlightsCard';
 import { WeeklyMenuView } from '@/components/WeeklyMenuView';
 import type { Subscription, DailyMeal, Address, Meal, PlanType, Chef, Dish, Customer, AddressType, Order, MealSlot } from '@/types';
 
@@ -630,6 +631,7 @@ export const CustomerDashboard = () => {
           </div>
 
           <CutoffBanner />
+          <NotificationHighlightsCard role="customer" />
 
         {/* Review Prompt */}
         <ReviewPrompt orders={ordersForReview} onSubmitReview={handleSubmitReview} />

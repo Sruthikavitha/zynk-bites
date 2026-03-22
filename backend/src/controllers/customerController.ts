@@ -19,6 +19,7 @@ import {
   getReviewsByChefId,
 } from '../models/reviewQueries.js';
 import { ensureUpcomingMealsForCustomer, refreshDeliveredOrdersForCustomer } from '../services/mealPlannerService.js';
+import { notifyChefMenuUpdate } from '../services/notificationService.js';
 import { getCutoffForDate, isBeforeMealCutoff } from '../utils/mealSchedule.js';
 import { sampleMeals } from '../data/sampleCatalog.js';
 
@@ -95,6 +96,31 @@ const requireCustomer = (req: Request, res: Response): number | null => {
   return req.user.userId;
 };
 
+const notifyChefOfMealChange = async (
+  customerId: number,
+  meal: any,
+  changeType: 'skip' | 'unskip' | 'swap' | 'address_change',
+  mealName?: string | null
+) => {
+  const [subscription, customerUser, order] = await Promise.all([
+    getActiveSubscription(customerId),
+    getUserById(customerId),
+    getOrderByDailyMealId(meal.id),
+  ]);
+
+  const chefId = order?.chefId || subscription?.chefId;
+  if (!chefId) return;
+
+  await notifyChefMenuUpdate({
+    chefId,
+    customerId,
+    customerName: customerUser?.fullName,
+    date: meal.date,
+    changeType,
+    mealName: mealName || order?.mealName || null,
+  });
+};
+
 export const getCustomerMeals = async (req: Request, res: Response) => {
   try {
     const customerId = requireCustomer(req, res);
@@ -163,6 +189,7 @@ export const skipCustomerMeal = async (req: Request, res: Response) => {
       res.status(500).json({ success: false, message: 'Failed to update meal' });
       return;
     }
+    await notifyChefOfMealChange(customerId, meal, 'skip');
     res.json({ success: true, message: 'Meal skipped successfully', meal: mapDailyMeal(updated) });
   } catch (error: any) {
     console.error('Skip meal error:', error);
@@ -223,6 +250,7 @@ export const unskipCustomerMeal = async (req: Request, res: Response) => {
       res.status(500).json({ success: false, message: 'Failed to update meal' });
       return;
     }
+    await notifyChefOfMealChange(customerId, meal, 'unskip');
     res.json({ success: true, message: 'Meal restored successfully', meal: mapDailyMeal(updated) });
   } catch (error: any) {
     console.error('Unskip meal error:', error);
@@ -283,6 +311,7 @@ export const swapCustomerMeal = async (req: Request, res: Response) => {
       res.status(500).json({ success: false, message: 'Failed to update meal' });
       return;
     }
+    await notifyChefOfMealChange(customerId, meal, 'swap', mealName);
     res.json({ success: true, message: 'Meal swapped successfully', meal: mapDailyMeal(updated) });
   } catch (error: any) {
     console.error('Swap meal error:', error);
@@ -349,6 +378,7 @@ export const updateCustomerMealAddress = async (req: Request, res: Response) => 
       res.status(500).json({ success: false, message: 'Failed to update meal' });
       return;
     }
+    await notifyChefOfMealChange(customerId, meal, 'address_change');
     res.json({ success: true, message: 'Address updated successfully', meal: mapDailyMeal(updated) });
   } catch (error: any) {
     console.error('Update meal address error:', error);

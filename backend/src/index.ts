@@ -28,9 +28,13 @@ import skipDecisionRoutes from "./routes/skipDecisionRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import catalogRoutes from "./routes/catalogRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import customerRoutes from "./routes/customerRoutes.js";
+import chefRoutes from "./routes/chefRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 import { errorHandler, notFoundHandler } from "./middlewares/errorHandler.js";
 import { ensureDefaultAdminUser } from "./services/adminBootstrap.js";
 import { seedCatalogIfEmpty } from "./data/seedCatalog.js";
+import { startNotificationWorker } from "./services/notificationService.js";
 
 // -----------------------------------------------------------------------------
 // App & Config
@@ -119,8 +123,10 @@ async function startServer() {
     await initializeDatabase();
     await ensureDefaultAdminUser();
     const catalogSeed = await seedCatalogIfEmpty();
+    startNotificationWorker();
     console.log("✓ Database connected successfully");
     console.log(`✓ Catalog ready (${catalogSeed.totalChefCount} chefs, ${catalogSeed.totalDishCount} dishes)`);
+    console.log("✓ Notification worker started");
 
     // 2️⃣ Register routes AFTER DB is ready
     app.use("/api/auth", authRoutes);
@@ -129,6 +135,9 @@ async function startServer() {
     app.use("/api/skip-decision", skipDecisionRoutes);
     app.use("/api/payment", paymentRoutes);
     app.use("/api/admin", adminRoutes);
+    app.use("/api/customer", customerRoutes);
+    app.use("/api/chef", chefRoutes);
+    app.use("/api/notifications", notificationRoutes);
     app.use("/api", catalogRoutes);
 
     // 3️⃣ 404 handler

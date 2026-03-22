@@ -12,12 +12,29 @@ import {
   type BackendAuthUser,
 } from '@/services/backend';
 import { Layout } from '@/components/layout/Layout';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { User, ChefHat, Eye, EyeOff, Home, Briefcase, MapPin, ChevronRight, ChevronLeft } from 'lucide-react';
+import {
+  User,
+  ChefHat,
+  Eye,
+  EyeOff,
+  Home,
+  Briefcase,
+  MapPin,
+  ChevronRight,
+  ChevronLeft,
+  CheckCircle2,
+  Clock3,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  UtensilsCrossed,
+} from 'lucide-react';
 import type { Address, Customer, PlanType } from '@/types';
 
 type RegistrationType = 'customer' | 'chef';
@@ -195,6 +212,43 @@ export const Register = () => {
 
   const selectedChef = chefs.find((chef) => chef.id === selectedChefId) || null;
   const selectedPlanOption = planOptions.find((plan) => plan.id === selectedPlan) || planOptions[0];
+  const isChefSelectionStep = step === 'chef';
+  const shellWidthClass = isChefSelectionStep ? 'max-w-6xl' : step === 'payment' ? 'max-w-2xl' : 'max-w-lg';
+  const shellCardClass = isChefSelectionStep
+    ? 'border-0 bg-transparent shadow-none'
+    : 'chef-card border border-gray-200 shadow-kitchen';
+  const shellContentClass = isChefSelectionStep ? 'p-0' : 'pt-8 pb-6';
+
+  const planExperience: Record<
+    PlanType,
+    {
+      meals: string;
+      badge: string;
+      highlights: string[];
+    }
+  > = {
+    basic: {
+      meals: '20 meals / month',
+      badge: 'Easy start',
+      highlights: ['Weekday-friendly', 'Simple daily routine'],
+    },
+    standard: {
+      meals: '40 meals / month',
+      badge: 'Most loved',
+      highlights: ['Lunch + dinner coverage', 'Best value for consistency'],
+    },
+    premium: {
+      meals: '60 meals / month',
+      badge: 'Full day',
+      highlights: ['Three meals covered', 'Built for busy schedules'],
+    },
+  };
+
+  const chefStepHighlights = [
+    { icon: Sparkles, value: `${chefs.length || 0}+`, label: 'Approved chefs' },
+    { icon: Clock3, value: '8 PM', label: 'Skip or swap cutoff' },
+    { icon: ShieldCheck, value: 'Secure', label: 'Razorpay checkout' },
+  ];
 
   const buildAuthenticatedCustomer = (backendUser: BackendAuthUser): Customer => ({
     id: String(backendUser.id),
@@ -621,24 +675,33 @@ export const Register = () => {
     return chart.days.filter(day => day.date >= today).slice(0, 7);
   };
 
+  const getChefTags = (chef: ChefWithData) =>
+    chef.specialty
+      ? chef.specialty.split(',').map((item) => item.trim()).filter(Boolean).slice(0, 3)
+      : ['Home Chef'];
+
+  const getChefDishPreview = (chef: ChefWithData) => chef.dishes.slice(0, 4);
+
   const menuChartDays = selectedChef ? getMenuChartDays(selectedChef) : [];
+  const selectedChefDishPreview = selectedChef ? getChefDishPreview(selectedChef) : [];
+  const selectedPlanExperience = planExperience[selectedPlan];
 
   return (
     <Layout>
-      <div className="min-h-[80vh] flex items-center justify-center bg-gradient-to-b from-secondary to-background py-12 px-4">
-        <div className="w-full max-w-lg">
+      <div className="min-h-[80vh] flex items-center justify-center bg-[radial-gradient(circle_at_top_left,_rgba(22,163,74,0.14),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(249,115,22,0.12),_transparent_26%),linear-gradient(180deg,#f7fff8_0%,#ffffff_48%,#f8fafc_100%)] py-12 px-4">
+        <div className={`w-full ${shellWidthClass}`}>
           <div className="text-center mb-8">
             <p className="font-chef text-xs tracking-widest text-green-500 mb-4">
               {step === 'basic' && 'JOIN THE KITCHEN'}
               {step === 'addresses' && 'DELIVERY SETUP'}
-              {step === 'chef' && 'CHOOSE YOUR CHEF'}
+              {step === 'chef' && 'CHEF + PLAN SELECTION'}
               {step === 'payment' && 'PAYMENT'}
               {step === 'kitchen' && 'CHEF PROFILE'}
             </p>
             <h1 className="font-display text-3xl font-bold text-charcoal">
               {step === 'basic' && 'Create Account'}
               {step === 'addresses' && 'Delivery Addresses'}
-              {step === 'chef' && 'Select a Chef'}
+              {step === 'chef' && 'Build Your Monthly Meal Setup'}
               {step === 'payment' && 'Complete Payment'}
               {step === 'kitchen' && 'Kitchen Setup'}
             </h1>
@@ -646,14 +709,14 @@ export const Register = () => {
             <p className="mt-4 text-muted-foreground">
               {step === 'basic' && 'Join ZYNK and experience culinary excellence'}
               {step === 'addresses' && 'Add your locations for seamless delivery'}
-              {step === 'chef' && 'Pick a chef, review their menu chart, and choose your plan'}
+              {step === 'chef' && 'Compare chefs, preview signature dishes, and choose the plan that fits your routine'}
               {step === 'payment' && 'Securely complete payment to activate your subscription'}
               {step === 'kitchen' && 'Tell us about your culinary expertise'}
             </p>
           </div>
 
-          <Card className="chef-card border border-gray-200 shadow-kitchen">
-            <CardContent className="pt-8 pb-6">
+          <Card className={shellCardClass}>
+            <CardContent className={shellContentClass}>
               {step === 'basic' && (
                 <>
                   {/* Role Toggle - Professional Style */}
@@ -798,95 +861,345 @@ export const Register = () => {
             )}
 
             {step === 'chef' && (
-              <div className="space-y-5">
-                <div className="space-y-3">
-                  {loadingChefs ? (
-                    <div className="text-sm text-muted-foreground">Loading chefs...</div>
-                  ) : chefs.length === 0 ? (
-                    <div className="text-sm text-muted-foreground">No approved chefs available right now.</div>
-                  ) : (
-                    chefs.map((chef) => (
-                      <button
-                        key={chef.id}
-                        type="button"
-                        onClick={() => setSelectedChefId(chef.id)}
-                        className={`w-full text-left border rounded-sm p-4 transition-colors ${
-                          selectedChefId === chef.id ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <p className="font-display text-lg font-bold text-charcoal">{chef.name}</p>
-                            <p className="text-sm text-muted-foreground">{chef.specialty}</p>
-                            <p className="text-xs text-muted-foreground mt-1">{chef.serviceArea}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm font-medium text-charcoal">{chef.avgRating?.toFixed(1) || 'New'}</p>
-                            <p className="text-xs text-muted-foreground">{chef.reviewCount || 0} reviews</p>
-                          </div>
-                        </div>
-                      </button>
-                    ))
-                  )}
-                </div>
-
-                {selectedChef && (
-                  <div className="space-y-4">
-                    <div className="rounded-sm border border-gray-200 p-4">
-                      <p className="font-chef text-xs tracking-wider text-charcoal mb-3">MENU CHART</p>
-                      {menuChartDays.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">Menu chart not uploaded yet.</p>
-                      ) : (
-                        <div className="space-y-2">
-                          {menuChartDays.map((day) => {
-                            const slots = day.slots || {};
-                            return (
-                              <div key={day.date} className="rounded-sm border border-gray-200 px-3 py-2">
-                                <p className="text-xs font-medium text-charcoal">{day.date}</p>
-                                <div className="text-xs text-muted-foreground mt-1 space-y-1">
-                                  <div>Breakfast: {getMealName(selectedChef, slots.breakfast?.mealId)}</div>
-                                  <div>Lunch: {getMealName(selectedChef, slots.lunch?.mealId)}</div>
-                                  <div>Dinner: {getMealName(selectedChef, slots.dinner?.mealId)}</div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
+              <div className="space-y-6">
+                <div className="overflow-hidden rounded-[30px] border border-emerald-200 bg-[linear-gradient(135deg,#0f172a_0%,#14532d_58%,#f97316_140%)] p-6 text-white shadow-[0_24px_80px_rgba(15,23,42,0.22)]">
+                  <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                    <div className="max-w-2xl">
+                      <div className="flex flex-wrap gap-2">
+                        <Badge className="rounded-full bg-white/15 px-3 py-1 text-white hover:bg-white/15">Admin approved chefs</Badge>
+                        <Badge className="rounded-full bg-white/15 px-3 py-1 text-white hover:bg-white/15">Monthly plans</Badge>
+                        <Badge className="rounded-full bg-white/15 px-3 py-1 text-white hover:bg-white/15">Secure checkout</Badge>
+                      </div>
+                      <h2 className="mt-4 font-display text-3xl font-semibold tracking-tight">
+                        Pick a chef that matches your taste and routine.
+                      </h2>
+                      <p className="mt-3 max-w-xl text-sm leading-6 text-white/80">
+                        Compare ratings, cuisine style, locality, and signature dishes, then lock the monthly plan that feels right for your everyday meals.
+                      </p>
                     </div>
 
-                    <div className="rounded-sm border border-gray-200 p-4">
-                      <p className="font-chef text-xs tracking-wider text-charcoal mb-3">CHOOSE PLAN</p>
-                      <div className="grid gap-3">
-                        {planOptions.map((plan) => (
-                          <div key={plan.id} className="flex items-center justify-between rounded-sm border border-gray-200 px-3 py-2">
-                            <div>
-                              <p className="font-medium text-charcoal">{plan.name}</p>
-                              <p className="text-xs text-muted-foreground">{plan.slots}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm font-semibold text-primary">{plan.price}</p>
-                              <Button
-                                type="button"
-                                size="sm"
-                                className="mt-2"
-                                onClick={() => {
-                                  setSelectedPlan(plan.id);
-                                  setStep('payment');
-                                }}
-                              >
-                                Select
-                              </Button>
-                            </div>
-                          </div>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      {chefStepHighlights.map(({ icon: Icon, value, label }) => (
+                        <div key={label} className="rounded-2xl border border-white/15 bg-white/10 px-4 py-4 backdrop-blur-sm">
+                          <Icon className="h-4 w-4 text-emerald-200" />
+                          <p className="mt-3 text-2xl font-semibold">{value}</p>
+                          <p className="mt-1 text-xs uppercase tracking-[0.2em] text-white/65">{label}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-chef text-emerald-600">Chef Listing</p>
+                        <h3 className="mt-1 font-display text-2xl font-semibold text-slate-900">
+                          {homeAddress.city.trim() ? `Popular around ${homeAddress.city}` : 'Popular with ZYNK members'}
+                        </h3>
+                      </div>
+                      <div className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm text-slate-600 shadow-sm">
+                        {loadingChefs ? 'Loading chefs...' : `${chefs.length} chefs available`}
+                      </div>
+                    </div>
+
+                    {loadingChefs ? (
+                      <div className="grid gap-4">
+                        {[1, 2, 3].map((card) => (
+                          <div key={card} className="h-48 rounded-[28px] border border-emerald-100 bg-white/70 p-5 shadow-sm animate-pulse" />
                         ))}
+                      </div>
+                    ) : chefs.length === 0 ? (
+                      <div className="rounded-[28px] border border-dashed border-slate-200 bg-white px-6 py-10 text-center shadow-sm">
+                        <ChefHat className="mx-auto h-10 w-10 text-slate-300" />
+                        <p className="mt-4 text-lg font-semibold text-slate-900">No approved chefs available yet</p>
+                        <p className="mt-2 text-sm text-slate-500">
+                          Ask an admin to approve a chef profile, then come back here to continue your subscription.
+                        </p>
+                      </div>
+                    ) : (
+                      chefs.map((chef) => {
+                        const tags = getChefTags(chef);
+                        const dishPreview = getChefDishPreview(chef);
+                        const isSelected = selectedChefId === chef.id;
+
+                        return (
+                          <button
+                            key={chef.id}
+                            type="button"
+                            onClick={() => setSelectedChefId(chef.id)}
+                            className={`w-full rounded-[28px] border p-5 text-left transition-all duration-200 ${
+                              isSelected
+                                ? 'border-emerald-300 bg-[linear-gradient(135deg,#f0fdf4_0%,#ffffff_52%,#fff7ed_100%)] shadow-[0_18px_45px_rgba(22,163,74,0.12)]'
+                                : 'border-slate-200 bg-white shadow-sm hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-[0_18px_40px_rgba(15,23,42,0.08)]'
+                            }`}
+                          >
+                            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                              <div className="flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <Badge className="rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
+                                    {isSelected ? 'Selected' : 'Approved chef'}
+                                  </Badge>
+                                  <Badge variant="outline" className="rounded-full border-slate-200 text-slate-600">
+                                    {chef.serviceArea || 'Local delivery'}
+                                  </Badge>
+                                  {chef.avgRating && chef.avgRating >= 4.7 && (
+                                    <Badge className="rounded-full bg-amber-50 text-amber-700 hover:bg-amber-50">
+                                      Top rated
+                                    </Badge>
+                                  )}
+                                </div>
+
+                                <div className="mt-4 flex items-start justify-between gap-4">
+                                  <div>
+                                    <h3 className="font-display text-2xl font-semibold text-slate-900">{chef.name}</h3>
+                                    <p className="mt-1 text-sm text-slate-600">{chef.specialty || 'Home chef'}</p>
+                                  </div>
+                                  <div className="rounded-2xl bg-slate-900 px-4 py-3 text-right text-white shadow-lg">
+                                    <div className="flex items-center justify-end gap-1">
+                                      <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                                      <span className="text-lg font-semibold">{chef.avgRating?.toFixed(1) || '4.6'}</span>
+                                    </div>
+                                    <p className="mt-1 text-xs text-white/70">{chef.reviewCount || 0} reviews</p>
+                                  </div>
+                                </div>
+
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                  {tags.map((tag) => (
+                                    <span key={`${chef.id}-${tag}`} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                                      {tag}
+                                    </span>
+                                  ))}
+                                </div>
+
+                                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
+                                    <p className="text-xs font-chef text-emerald-700">Plans from</p>
+                                    <p className="mt-2 text-xl font-semibold text-slate-900">{planOptions[0].price}</p>
+                                  </div>
+                                  <div className="rounded-2xl border border-orange-100 bg-orange-50/70 p-4">
+                                    <p className="text-xs font-chef text-orange-700">Flexible till</p>
+                                    <p className="mt-2 text-xl font-semibold text-slate-900">8 PM</p>
+                                  </div>
+                                </div>
+
+                                <div className="mt-5">
+                                  <p className="text-xs font-chef text-slate-500">Signature dishes</p>
+                                  <div className="mt-2 flex flex-wrap gap-2">
+                                    {dishPreview.length > 0 ? (
+                                      dishPreview.map((dish) => (
+                                        <span
+                                          key={dish.id}
+                                          className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700"
+                                        >
+                                          <UtensilsCrossed className="h-3 w-3 text-emerald-600" />
+                                          {dish.name}
+                                        </span>
+                                      ))
+                                    ) : (
+                                      <span className="text-xs text-slate-500">Dish list will appear here once the chef updates the menu.</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <div className="space-y-4 xl:sticky xl:top-24">
+                    <div className="overflow-hidden rounded-[30px] border border-emerald-200 bg-white shadow-[0_20px_55px_rgba(15,23,42,0.09)]">
+                      <div className="bg-[linear-gradient(135deg,#052e16_0%,#166534_58%,#fb923c_130%)] p-6 text-white">
+                        <p className="text-xs font-chef text-emerald-100">Selected Chef</p>
+                        {selectedChef ? (
+                          <>
+                            <div className="mt-3 flex items-start justify-between gap-4">
+                              <div>
+                                <h3 className="font-display text-3xl font-semibold">{selectedChef.name}</h3>
+                                <p className="mt-2 text-sm text-white/80">{selectedChef.specialty || 'Home chef'}</p>
+                              </div>
+                              <div className="rounded-2xl bg-white/10 px-4 py-3 text-right backdrop-blur-sm">
+                                <div className="flex items-center justify-end gap-1">
+                                  <Star className="h-4 w-4 fill-amber-300 text-amber-300" />
+                                  <span className="text-lg font-semibold">{selectedChef.avgRating?.toFixed(1) || '4.6'}</span>
+                                </div>
+                                <p className="mt-1 text-xs text-white/70">{selectedChef.reviewCount || 0} reviews</p>
+                              </div>
+                            </div>
+
+                            <div className="mt-4 flex flex-wrap gap-2">
+                              <span className="rounded-full bg-white/12 px-3 py-1 text-xs text-white/85">
+                                {selectedChef.serviceArea || 'Local area'}
+                              </span>
+                              <span className="rounded-full bg-white/12 px-3 py-1 text-xs text-white/85">
+                                Admin approved
+                              </span>
+                              <span className="rounded-full bg-white/12 px-3 py-1 text-xs text-white/85">
+                                Monthly subscription ready
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <h3 className="mt-3 font-display text-2xl font-semibold">Choose a chef to continue</h3>
+                            <p className="mt-2 text-sm text-white/80">
+                              Select a chef on the left to unlock dish previews and the plan selector.
+                            </p>
+                          </>
+                        )}
+                      </div>
+
+                      <div className="space-y-5 p-5">
+                        <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-xs font-chef text-slate-500">
+                                {menuChartDays.length > 0 ? 'Weekly preview' : 'Signature menu'}
+                              </p>
+                              <p className="mt-1 text-sm text-slate-600">
+                                {menuChartDays.length > 0
+                                  ? 'A quick look at the meals your chef has lined up.'
+                                  : 'No weekly chart yet, so here are the dishes this chef is known for.'}
+                              </p>
+                            </div>
+                            <Sparkles className="h-5 w-5 text-emerald-600" />
+                          </div>
+
+                          <div className="mt-4 space-y-3">
+                            {selectedChef ? (
+                              menuChartDays.length > 0 ? (
+                                menuChartDays.slice(0, 3).map((day) => {
+                                  const slots = day.slots || {};
+                                  return (
+                                    <div key={day.date} className="rounded-2xl bg-white p-3 shadow-sm">
+                                      <p className="text-sm font-semibold text-slate-900">{day.date}</p>
+                                      <div className="mt-2 grid gap-2 text-xs text-slate-600 sm:grid-cols-3">
+                                        <div>Breakfast: {getMealName(selectedChef, slots.breakfast?.mealId)}</div>
+                                        <div>Lunch: {getMealName(selectedChef, slots.lunch?.mealId)}</div>
+                                        <div>Dinner: {getMealName(selectedChef, slots.dinner?.mealId)}</div>
+                                      </div>
+                                    </div>
+                                  );
+                                })
+                              ) : (
+                                <div className="flex flex-wrap gap-2">
+                                  {selectedChefDishPreview.length > 0 ? (
+                                    selectedChefDishPreview.map((dish) => (
+                                      <span
+                                        key={`selected-${dish.id}`}
+                                        className="rounded-full border border-emerald-100 bg-white px-3 py-2 text-xs font-medium text-slate-700"
+                                      >
+                                        {dish.name}
+                                      </span>
+                                    ))
+                                  ) : (
+                                    <p className="text-sm text-slate-500">Dish preview will appear once the chef uploads signature items.</p>
+                                  )}
+                                </div>
+                              )
+                            ) : (
+                              <p className="text-sm text-slate-500">Choose a chef to see menu highlights here.</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="rounded-[24px] border border-slate-200 bg-white p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-xs font-chef text-slate-500">Choose your plan</p>
+                              <p className="mt-1 text-sm text-slate-600">Tap a plan to compare coverage before checkout.</p>
+                            </div>
+                            {selectedChef && (
+                              <Badge className="rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
+                                {selectedPlanExperience.badge}
+                              </Badge>
+                            )}
+                          </div>
+
+                          <div className="mt-4 space-y-3">
+                            {planOptions.map((plan) => {
+                              const isSelectedPlan = selectedPlan === plan.id;
+                              return (
+                                <button
+                                  key={plan.id}
+                                  type="button"
+                                  onClick={() => setSelectedPlan(plan.id)}
+                                  className={`w-full rounded-[24px] border p-4 text-left transition-all ${
+                                    isSelectedPlan
+                                      ? 'border-emerald-300 bg-emerald-50 shadow-sm'
+                                      : 'border-slate-200 bg-white hover:border-emerald-200'
+                                  }`}
+                                >
+                                  <div className="flex items-start justify-between gap-4">
+                                    <div>
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <p className="font-display text-xl font-semibold text-slate-900">{plan.name}</p>
+                                        <Badge
+                                          variant="outline"
+                                          className={`rounded-full ${
+                                            isSelectedPlan ? 'border-emerald-300 text-emerald-700' : 'border-slate-200 text-slate-500'
+                                          }`}
+                                        >
+                                          {planExperience[plan.id].badge}
+                                        </Badge>
+                                      </div>
+                                      <p className="mt-1 text-sm text-slate-600">{plan.slots}</p>
+                                      <p className="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+                                        {planExperience[plan.id].meals}
+                                      </p>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-lg font-semibold text-emerald-700">{plan.price}</p>
+                                      {isSelectedPlan && <CheckCircle2 className="ml-auto mt-2 h-5 w-5 text-emerald-600" />}
+                                    </div>
+                                  </div>
+
+                                  <div className="mt-4 flex flex-wrap gap-2">
+                                    {planExperience[plan.id].highlights.map((highlight) => (
+                                      <span
+                                        key={`${plan.id}-${highlight}`}
+                                        className={`rounded-full px-3 py-1 text-xs ${
+                                          isSelectedPlan ? 'bg-white text-slate-700' : 'bg-slate-100 text-slate-600'
+                                        }`}
+                                      >
+                                        {highlight}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="rounded-[24px] border border-orange-100 bg-orange-50/70 p-4">
+                          <div className="flex items-center gap-2 text-orange-800">
+                            <ShieldCheck className="h-4 w-4" />
+                            <p className="text-sm font-semibold">Secure checkout and flexible changes</p>
+                          </div>
+                          <p className="mt-2 text-sm text-orange-700">
+                            Address changes, skip, and swap stay open until 8 PM. Payment is completed through Razorpay after you confirm the chef and plan.
+                          </p>
+                        </div>
+
+                        <Button
+                          type="button"
+                          className="h-12 w-full rounded-full bg-emerald-500 text-white hover:bg-emerald-600"
+                          disabled={!selectedChef}
+                          onClick={() => setStep('payment')}
+                        >
+                          {selectedChef ? `Continue with ${selectedPlanOption.name}` : 'Select a chef to continue'}
+                        </Button>
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
 
-                <div className="flex gap-3 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setStep('addresses')} className="flex-1 font-chef tracking-wider text-xs">
+                <div className="flex gap-3 pt-2">
+                  <Button type="button" variant="outline" onClick={() => setStep('addresses')} className="font-chef tracking-wider text-xs">
                     <ChevronLeft className="w-4 h-4 mr-2" />
                     BACK
                   </Button>

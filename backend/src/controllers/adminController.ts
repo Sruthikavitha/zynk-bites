@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { getAllChefs, getPendingChefs, getChefById } from '../models/chefQueries.js';
 import { updateUser } from '../models/userQueries.js';
+import { notifyChefApproved } from '../services/notificationService.js';
 
 const mapAdminChef = (chef: any) => ({
   id: String(chef.id),
@@ -51,6 +52,7 @@ export const approveChef = async (req: Request, res: Response) => {
     }
 
     const updated = await updateUser(chefId, { isActive: true });
+    await notifyChefApproved(chefId);
     return res.json({
       success: true,
       message: 'Chef approved successfully',

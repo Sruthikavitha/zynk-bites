@@ -1,6 +1,19 @@
 // ZYNK Types - Food Subscription App
 
 export type UserRole = 'customer' | 'chef' | 'delivery' | 'admin';
+export type NotificationType =
+  | 'subscription_success'
+  | 'payment_failed'
+  | 'meal_reminder'
+  | 'daily_meal_count'
+  | 'skip_swap_deadline'
+  | 'delivery_update'
+  | 'new_subscriber'
+  | 'chef_menu_update'
+  | 'chef_pending_approval'
+  | 'chef_approved'
+  | 'system_alert';
+export type NotificationPriority = 'normal' | 'critical';
 
 export type DietType = 'vegetarian' | 'non-vegetarian' | 'vegan' | 'keto' | 'gluten-free';
 export type HealthGoal = 'weight-loss' | 'muscle-gain' | 'maintenance' | 'energy' | 'balanced';
@@ -243,6 +256,20 @@ export interface ApiResponse<T = unknown> {
   message?: string;
   statusCode?: number;
   nextAvailableAt?: string;
+}
+
+export interface AppNotification {
+  id: string;
+  type: NotificationType;
+  priority: NotificationPriority;
+  title: string;
+  message: string;
+  actionUrl?: string;
+  metadata: Record<string, unknown>;
+  status: 'queued' | 'processing' | 'delivered' | 'failed';
+  createdAt: string;
+  deliveredAt?: string;
+  readAt?: string;
 }
 
 export interface Database {
