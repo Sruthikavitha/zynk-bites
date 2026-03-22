@@ -1,3 +1,5 @@
+import type { Chef, DailyMeal, Dish, Meal, Order, Review } from '@/types';
+
 const normalizeApiBase = (value?: string) => {
   const trimmed = value?.trim();
   if (!trimmed) return null;
@@ -118,6 +120,27 @@ export type BackendAuthUser = {
   phone?: string | null;
 };
 
+export type BackendAdminChef = {
+  id: string;
+  name: string;
+  email: string;
+  role: 'chef';
+  status: 'pending' | 'approved';
+  specialty?: string;
+  bio?: string;
+  serviceArea?: string;
+  phone?: string | null;
+  isDisabled?: boolean;
+  createdAt?: string;
+};
+
+export type BackendChefProfile = {
+  chef: Chef;
+  dishes: Dish[];
+  reviews: Review[];
+  avgRating: number;
+};
+
 type BackendAuthResponse = {
   success: boolean;
   message?: string;
@@ -209,34 +232,28 @@ export const updateSubscriptionChef = async (token: string, subscriptionId: stri
 };
 
 export const getChefsWithRatings = async () => {
-  const { response, data } = await requestJson<{ success: boolean; data?: any[] }>('/api/chefs');
+  const { response, data } = await requestJson<{ success: boolean; data?: Chef[] }>('/api/chefs');
   if (!response?.ok || !data?.success || !Array.isArray(data.data)) return null;
   return data.data;
 };
 
 export const getChefProfile = async (chefId: string) => {
-  const { response, data } = await requestJson<{
-    success: boolean;
-    data?: {
-      chef: any;
-      dishes: any[];
-      reviews: any[];
-      avgRating: number;
-    };
-  }>(`/api/chefs/${chefId}/profile`);
+  const { response, data } = await requestJson<{ success: boolean; data?: BackendChefProfile }>(
+    `/api/chefs/${chefId}/profile`
+  );
 
   if (!response?.ok || !data?.success || !data.data) return null;
   return data.data;
 };
 
 export const getAllDishes = async () => {
-  const { response, data } = await requestJson<{ success: boolean; data?: any[] }>('/api/dishes');
+  const { response, data } = await requestJson<{ success: boolean; data?: Dish[] }>('/api/dishes');
   if (!response?.ok || !data?.success || !Array.isArray(data.data)) return null;
   return data.data;
 };
 
 export const getAllMeals = async () => {
-  const { response, data } = await requestJson<{ success: boolean; data?: any[] }>('/api/meals');
+  const { response, data } = await requestJson<{ success: boolean; data?: Meal[] }>('/api/meals');
   if (!response?.ok || !data?.success || !Array.isArray(data.data)) return null;
   return data.data;
 };
@@ -248,7 +265,7 @@ type BackendActionResponse = {
 };
 
 export const getCustomerMeals = async (token: string) => {
-  const { response, data } = await requestJson<{ success: boolean; meals?: any[] }>('/api/customer/meals', {
+  const { response, data } = await requestJson<{ success: boolean; meals?: DailyMeal[] }>('/api/customer/meals', {
     headers: { Authorization: `Bearer ${token}` },
   });
 
@@ -336,16 +353,19 @@ export const updateCustomerMealAddress = async (
 };
 
 export const getOrdersForReview = async (token: string) => {
-  const { response, data } = await requestJson<{ success: boolean; orders?: any[] }>('/api/customer/orders/for-review', {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const { response, data } = await requestJson<{ success: boolean; orders?: Order[] }>(
+    '/api/customer/orders/for-review',
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
 
   if (!response?.ok || !data?.success || !Array.isArray(data.orders)) return null;
   return data.orders;
 };
 
 export const getCustomerOrdersWithTracking = async (token: string) => {
-  const { response, data } = await requestJson<{ success: boolean; orders?: any[] }>(
+  const { response, data } = await requestJson<{ success: boolean; orders?: Order[] }>(
     '/api/customer/orders/tracking',
     {
       headers: { Authorization: `Bearer ${token}` },
@@ -373,4 +393,39 @@ export const submitCustomerReview = async (
   }
 
   return { success: true, message: data?.message || 'Review submitted' };
+};
+
+export const getPendingChefApprovals = async (token: string): Promise<BackendAdminChef[] | null> => {
+  const { response, data } = await requestJson<{ success: boolean; data?: BackendAdminChef[] }>('/api/admin/chefs/pending', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response?.ok || !data?.success || !Array.isArray(data.data)) return null;
+  return data.data;
+};
+
+export const getAllChefApprovals = async (token: string): Promise<BackendAdminChef[] | null> => {
+  const { response, data } = await requestJson<{ success: boolean; data?: BackendAdminChef[] }>('/api/admin/chefs', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response?.ok || !data?.success || !Array.isArray(data.data)) return null;
+  return data.data;
+};
+
+export const approveChefApproval = async (token: string, chefId: string) => {
+  const { response, data } = await requestJson<{
+    success: boolean;
+    message?: string;
+    chef?: BackendAdminChef;
+  }>(`/api/admin/chefs/${chefId}/approve`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response?.ok || !data?.success) {
+    return { success: false, message: data?.message || 'Failed to approve chef' };
+  }
+
+  return { success: true, message: data.message, chef: data.chef };
 };

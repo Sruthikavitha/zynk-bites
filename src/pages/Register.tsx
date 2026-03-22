@@ -1,7 +1,16 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import * as api from '@/services/api';
+import {
+  getApiToken,
+  getBackendApiBaseUrl,
+  getChefsWithRatings as getBackendChefs,
+  loginUser,
+  registerUser,
+  setApiToken,
+  type BackendAuthUser,
+} from '@/services/backend';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,10 +18,11 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { User, ChefHat, Eye, EyeOff, Home, Briefcase, MapPin, ChevronRight, ChevronLeft } from 'lucide-react';
-import type { Address, PlanType } from '@/types';
+import type { Address, Customer, PlanType } from '@/types';
 
 type RegistrationType = 'customer' | 'chef';
 type RegistrationStep = 'basic' | 'addresses' | 'chef' | 'payment' | 'kitchen';
+const BACKEND_UNREACHABLE_MESSAGE = 'Unable to reach the backend';
 
 type ChefWithData = ReturnType<typeof api.getApprovedChefsWithRatings>['data'] extends (infer T)[] | undefined ? T : never;
 
@@ -21,6 +31,67 @@ const emptyAddress: Address = {
   city: '',
   state: '',
   zipCode: '',
+};
+
+const hasAnyAddressField = (address: Address) =>
+  [address.street, address.city, address.state, address.zipCode].some((value) => value.trim().length > 0);
+
+const isAddressComplete = (address: Address) =>
+  [address.street, address.city, address.state, address.zipCode].every((value) => value.trim().length > 0);
+
+const isLiveChefId = (chefId: string | null) => Boolean(chefId && /^\d+$/.test(chefId));
+
+type RazorpayHandlerResponse = {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+};
+
+type RazorpayOptions = {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id: string;
+  handler: (response: RazorpayHandlerResponse) => void | Promise<void>;
+  prefill?: {
+    name?: string;
+    email?: string;
+    contact?: string;
+  };
+  theme?: {
+    color: string;
+  };
+  modal?: {
+    ondismiss?: () => void;
+  };
+};
+
+type RazorpayInstance = {
+  open: () => void;
+};
+
+type RazorpayConstructor = new (options: RazorpayOptions) => RazorpayInstance;
+
+type RazorpayWindow = Window & typeof globalThis & {
+  Razorpay?: RazorpayConstructor;
+};
+
+const loadRazorpayCheckout = async () => {
+  await new Promise<void>((resolve, reject) => {
+    const razorpayWindow = window as RazorpayWindow;
+    if (razorpayWindow.Razorpay) {
+      resolve();
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Failed to load Razorpay checkout'));
+    document.body.appendChild(script);
+  });
 };
 
 const AddressForm = ({ 
@@ -75,6 +146,7 @@ const AddressForm = ({
 };
 
 export const Register = () => {
+  const location = useLocation();
   const [type, setType] = useState<RegistrationType>('customer');
   const [step, setStep] = useState<RegistrationStep>('basic');
   
@@ -91,6 +163,7 @@ export const Register = () => {
 
   const [chefs, setChefs] = useState<ChefWithData[]>([]);
   const [loadingChefs, setLoadingChefs] = useState(false);
+  const [hasLiveChefCatalog, setHasLiveChefCatalog] = useState(false);
   const [selectedChefId, setSelectedChefId] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<PlanType>('standard');
   const [paymentMethod, setPaymentMethod] = useState<'upi' | 'debit' | 'credit' | 'netbanking'>('upi');
@@ -104,7 +177,7 @@ export const Register = () => {
   
   const [isLoading, setIsLoading] = useState(false);
 
-  const { login } = useAuth();
+  const { user, login } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -114,23 +187,145 @@ export const Register = () => {
     { id: 'premium', name: 'Premium', slots: 'Breakfast + Lunch + Dinner', price: '₹5,999' },
   ];
 
+  const planAmounts: Record<PlanType, number> = {
+    basic: 299900,
+    standard: 449900,
+    premium: 599900,
+  };
+
   const selectedChef = chefs.find((chef) => chef.id === selectedChefId) || null;
   const selectedPlanOption = planOptions.find((plan) => plan.id === selectedPlan) || planOptions[0];
 
-  const loadChefs = () => {
-    setLoadingChefs(true);
-    const response = api.getApprovedChefsWithRatings();
-    if (response.success && response.data) {
-      setChefs(response.data);
+  const buildAuthenticatedCustomer = (backendUser: BackendAuthUser): Customer => ({
+    id: String(backendUser.id),
+    email: backendUser.email,
+    password: '',
+    name: backendUser.fullName,
+    role: 'customer',
+    phone: phone.trim() || undefined,
+    homeAddress: isAddressComplete(homeAddress) ? { ...homeAddress } : undefined,
+    workAddress: isAddressComplete(workAddress) ? { ...workAddress } : undefined,
+    selectedChefId: selectedChefId || undefined,
+    createdAt: new Date().toISOString(),
+  });
+
+  const persistAuthenticatedCustomer = (backendUser: BackendAuthUser, token: string) => {
+    setApiToken(token);
+    login(buildAuthenticatedCustomer(backendUser));
+  };
+
+  const ensureBackendCustomerSession = async () => {
+    const normalizedEmail = email.trim().toLowerCase();
+    const existingToken = getApiToken();
+
+    if (
+      existingToken &&
+      user?.role === 'customer' &&
+      user.email.trim().toLowerCase() === normalizedEmail
+    ) {
+      return {
+        success: true as const,
+        token: existingToken,
+        user: {
+          id: Number(user.id),
+          email: user.email,
+          fullName: user.name,
+          role: 'customer' as const,
+        },
+      };
     }
-    setLoadingChefs(false);
+
+    const registerResult = await registerUser({
+      fullName: name.trim(),
+      email: normalizedEmail,
+      password,
+      role: 'customer',
+      phone: phone.trim() || undefined,
+    });
+
+    if (registerResult.success && registerResult.token && registerResult.user) {
+      persistAuthenticatedCustomer(registerResult.user, registerResult.token);
+      return {
+        success: true as const,
+        token: registerResult.token,
+        user: registerResult.user,
+      };
+    }
+
+    if (registerResult.message?.toLowerCase().includes('already registered')) {
+      const loginResult = await loginUser(normalizedEmail, password);
+      if (loginResult.success && loginResult.token && loginResult.user && loginResult.user.role === 'customer') {
+        persistAuthenticatedCustomer(loginResult.user, loginResult.token);
+        return {
+          success: true as const,
+          token: loginResult.token,
+          user: loginResult.user,
+        };
+      }
+
+      return {
+        success: false as const,
+        message: loginResult.message || 'Unable to sign in to the existing customer account.',
+      };
+    }
+
+    return {
+      success: false as const,
+      message: registerResult.message || 'Customer registration failed.',
+    };
+  };
+
+  const loadChefs = async () => {
+    setLoadingChefs(true);
+    try {
+      const backendChefs = await getBackendChefs();
+      if (backendChefs && backendChefs.length > 0) {
+        setChefs(backendChefs as ChefWithData[]);
+        setHasLiveChefCatalog(true);
+        return;
+      }
+
+      setChefs([]);
+      setHasLiveChefCatalog(false);
+    } finally {
+      setLoadingChefs(false);
+    }
   };
 
   useEffect(() => {
     if (type === 'customer' && step === 'chef') {
-      loadChefs();
+      void loadChefs();
     }
   }, [type, step]);
+
+  useEffect(() => {
+    const routeState = location.state as {
+      prefillPhone?: string;
+      registrationType?: RegistrationType;
+      otpVerified?: boolean;
+    } | null;
+
+    if (!routeState) return;
+
+    if (routeState.prefillPhone) {
+      setPhone(routeState.prefillPhone);
+    }
+
+    if (routeState.registrationType) {
+      setType(routeState.registrationType);
+      setStep('basic');
+    }
+
+    if (routeState.otpVerified) {
+      toast({
+        title: 'Phone verified',
+        description:
+          routeState.registrationType === 'chef'
+            ? 'Complete your chef onboarding details.'
+            : 'Complete your account details to continue.',
+      });
+    }
+  }, [location.state, toast]);
 
   const handleBasicSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,8 +338,21 @@ export const Register = () => {
 
   const handleCustomerAddressSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!homeAddress.street) {
-      toast({ title: 'Home address required', description: 'Please add a home address to continue.', variant: 'destructive' });
+    if (!isAddressComplete(homeAddress)) {
+      toast({
+        title: 'Complete home address',
+        description: 'Street, city, state, and ZIP code are required to continue.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (hasAnyAddressField(workAddress) && !isAddressComplete(workAddress)) {
+      toast({
+        title: 'Complete work address',
+        description: 'Fill every work address field or leave the work address empty.',
+        variant: 'destructive',
+      });
       return;
     }
     setStep('chef');
@@ -155,25 +363,59 @@ export const Register = () => {
     setIsLoading(true);
 
     try {
-      const response = api.registerChef(
-        email, 
-        password, 
-        name, 
-        specialty,
-        bio,
-        kitchenLocation.street ? kitchenLocation : undefined,
-        serviceArea,
-        deliverySlots
-      );
-      if (response.success && response.data) {
-        login(response.data);
-        toast({ 
-          title: 'Registration Complete!', 
-          description: 'You can now add your dishes. Orders will appear once you\'re approved.' 
+      const response = await registerUser({
+        fullName: name.trim(),
+        email: email.trim(),
+        password,
+        role: 'chef',
+        chefBusinessName: specialty.trim() || `${name.trim()}'s Kitchen`,
+        phone: phone.trim() || undefined,
+        specialty: specialty.trim() || undefined,
+        bio: bio.trim() || undefined,
+        serviceArea: serviceArea.trim() || undefined,
+      });
+
+      if (response.success) {
+        toast({
+          title: 'Application submitted',
+          description: 'An admin must approve your chef profile before it becomes visible to customers.',
         });
-        navigate('/dashboard');
+        navigate('/chef-partner', {
+          state: {
+            startStep: 'menu',
+            chefName: name.trim() || 'Chef Partner',
+            kitchenName: specialty.trim() || `${name.trim()}'s Kitchen`,
+            locality:
+              serviceArea.trim() ||
+              [kitchenLocation.city, kitchenLocation.state].filter(Boolean).join(', ') ||
+              'Your service area',
+            radius: '6',
+            onboardingMode: 'submitted',
+          },
+        });
       } else {
-        toast({ title: 'Error', description: response.error, variant: 'destructive' });
+        if (response.message?.includes(BACKEND_UNREACHABLE_MESSAGE)) {
+          toast({
+            title: 'Opening chef workspace in draft mode',
+            description: 'The backend could not be reached, so your chef profile is not submitted yet. Start the backend to save and send it for admin approval.',
+          });
+          navigate('/chef-partner', {
+            state: {
+              startStep: 'menu',
+              chefName: name.trim() || 'Chef Partner',
+              kitchenName: specialty.trim() || `${name.trim()}'s Kitchen`,
+              locality:
+                serviceArea.trim() ||
+                [kitchenLocation.city, kitchenLocation.state].filter(Boolean).join(', ') ||
+                'Your service area',
+              radius: '6',
+              onboardingMode: 'draft',
+            },
+          });
+          return;
+        }
+
+        toast({ title: 'Error', description: response.message || 'Chef registration failed', variant: 'destructive' });
       }
     } finally {
       setIsLoading(false);
@@ -187,43 +429,172 @@ export const Register = () => {
       return;
     }
 
+    if (!hasLiveChefCatalog || !isLiveChefId(selectedChefId)) {
+      toast({
+        title: 'Live chef data required',
+        description: 'Start the backend and load approved chefs before taking a Razorpay payment.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!isAddressComplete(homeAddress)) {
+      toast({
+        title: 'Complete home address',
+        description: 'Street, city, state, and ZIP code are required before payment.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (hasAnyAddressField(workAddress) && !isAddressComplete(workAddress)) {
+      toast({
+        title: 'Complete work address',
+        description: 'Fill every work address field or leave the work address empty.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const registerResponse = api.registerCustomer(
-        email, 
-        password, 
-        name, 
-        phone, 
-        homeAddress.street ? homeAddress : undefined,
-        workAddress.street ? workAddress : undefined
-      );
-
-      if (!registerResponse.success || !registerResponse.data) {
-        toast({ title: 'Error', description: registerResponse.error, variant: 'destructive' });
+      const customerSession = await ensureBackendCustomerSession();
+      if (!customerSession.success) {
+        toast({
+          title: 'Registration failed',
+          description: customerSession.message,
+          variant: 'destructive',
+        });
+        setIsLoading(false);
         return;
       }
 
-      login(registerResponse.data);
+      await loadRazorpayCheckout();
 
-      const subscriptionResponse = api.subscribeWithChef(
-        registerResponse.data.id,
-        selectedChefId,
-        [],
-        selectedPlan,
-        homeAddress,
-        workAddress.street ? workAddress : undefined
-      );
+      let apiBase = getBackendApiBaseUrl();
+      if (apiBase.endsWith('/api')) {
+        apiBase = apiBase.replace(/\/api\/?$/, '');
+      }
+      if (!apiBase) {
+        apiBase = `${window.location.protocol}//${window.location.hostname}:3002`;
+      }
 
-      if (!subscriptionResponse.success) {
-        toast({ title: 'Error', description: subscriptionResponse.error, variant: 'destructive' });
+      const orderRes = await fetch(`${apiBase}/api/payment/create-order`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${customerSession.token}`,
+        },
+        body: JSON.stringify({
+          amount: planAmounts[selectedPlan] || planAmounts.standard,
+          currency: 'INR',
+          plan: selectedPlan,
+        }),
+      });
+      const orderData = await orderRes.json();
+
+      if (!orderRes.ok || !orderData.success || !orderData.order) {
+        toast({
+          title: 'Payment setup failed',
+          description: orderData.message || 'Unable to create a Razorpay order.',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
         return;
       }
 
-      toast({ title: 'Payment successful', description: 'Subscription activated.' });
-      navigate('/dashboard');
-    } finally {
+      const razorpayKey = orderData.keyId || import.meta.env.VITE_RAZORPAY_KEY_ID;
+      if (!razorpayKey) {
+        toast({
+          title: 'Configuration error',
+          description: 'Razorpay key is not configured.',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(false);
+
+      const options = {
+        key: razorpayKey,
+        amount: orderData.order.amount,
+        currency: 'INR',
+        name: 'ZYNK Bites',
+        description: `${selectedPlanOption.name} subscription`,
+        order_id: orderData.order.id,
+        handler: async (response: RazorpayHandlerResponse) => {
+          try {
+            const verifyRes = await fetch(`${apiBase}/api/payment/verify`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${customerSession.token}`,
+              },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                plan: selectedPlan,
+                chefId: selectedChefId,
+                homeAddress,
+                workAddress: isAddressComplete(workAddress) ? workAddress : undefined,
+                paymentMethod,
+              }),
+            });
+            const verifyData = await verifyRes.json();
+
+            if (!verifyRes.ok || !verifyData.success) {
+              toast({
+                title: 'Payment verification failed',
+                description: verifyData.message || 'Unable to activate your subscription.',
+                variant: 'destructive',
+              });
+              return;
+            }
+
+            persistAuthenticatedCustomer(customerSession.user, customerSession.token);
+            toast({ title: 'Payment successful', description: 'Your subscription is now active.' });
+            navigate('/dashboard');
+          } catch {
+            toast({
+              title: 'Payment verification failed',
+              description: 'We could not confirm the payment. Please contact support if the amount was debited.',
+              variant: 'destructive',
+            });
+          }
+        },
+        prefill: {
+          name: customerSession.user.fullName,
+          email: customerSession.user.email,
+          contact: phone.trim() || undefined,
+        },
+        theme: { color: '#16a34a' },
+        modal: {
+          ondismiss: () => {
+            toast({
+              title: 'Payment cancelled',
+              description: 'Your account is ready. You can retry payment anytime to activate the subscription.',
+            });
+          },
+        },
+      };
+
+      const RazorpayCheckout = (window as RazorpayWindow).Razorpay;
+      if (!RazorpayCheckout) {
+        throw new Error('Razorpay checkout is unavailable.');
+      }
+
+      const razorpay = new RazorpayCheckout(options);
+      razorpay.open();
+    } catch (error) {
+      setIsLoading(false);
+      toast({
+        title: 'Payment failed',
+        description: error instanceof Error ? error.message : 'Unable to start Razorpay checkout.',
+        variant: 'destructive',
+      });
     }
   };
 

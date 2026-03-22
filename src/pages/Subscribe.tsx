@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,14 +9,46 @@ import {
   ChefHat, ArrowLeft, ArrowRight, Check, MapPin,
   Leaf, Drumstick, Flame, Dumbbell, Sparkles, Star, Home, Briefcase
 } from 'lucide-react';
-import * as api from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { getBackendApiBaseUrl, getApiToken, getChefsWithRatings as getBackendChefs } from '@/services/backend';
 import { useToast } from '@/hooks/use-toast';
-import type { Address, PlanType, Customer, Dish } from '@/types';
+import type { Address, PlanType, Customer, Dish, Chef } from '@/types';
 
-type ChefWithData = ReturnType<typeof api.getApprovedChefsWithRatings>['data'] extends (infer T)[] | undefined ? T : never;
 type Step = 'chef' | 'menu' | 'plan' | 'address' | 'confirm' | 'payment';
+type ChefWithData = Chef & { dishes: Dish[]; avgRating?: number; reviewCount?: number };
+
+type RazorpayHandlerResponse = {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+};
+
+type RazorpayOptions = {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id: string;
+  handler: (response: RazorpayHandlerResponse) => void | Promise<void>;
+  prefill?: {
+    name?: string;
+    email?: string;
+  };
+  theme?: {
+    color: string;
+  };
+  modal?: {
+    ondismiss?: () => void;
+  };
+};
+
+type RazorpayInstance = {
+  open: () => void;
+};
+
+type RazorpayConstructor = new (options: RazorpayOptions) => RazorpayInstance;
+type RazorpayWindow = Window & typeof globalThis & { Razorpay?: RazorpayConstructor };
 
 export const Subscribe = () => {
   const navigate = useNavigate();
@@ -34,29 +66,22 @@ export const Subscribe = () => {
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'upi' | 'debit' | 'credit' | 'netbanking'>('upi');
 
-  const customer = user as Customer;
+  const customer = user?.role === 'customer' ? (user as Customer) : null;
+
+  const loadChefs = useCallback(async () => {
+    const backendChefs = await getBackendChefs();
+    setChefs((backendChefs || []) as ChefWithData[]);
+  }, []);
 
   useEffect(() => {
-    if (!user || user.role !== 'customer') {
+    if (!customer) {
       navigate('/login');
       return;
     }
-    loadChefs();
-    if (customer?.homeAddress) setHomeAddress(customer.homeAddress);
-    if (customer?.workAddress) setWorkAddress(customer.workAddress);
-  }, [user]);
-
-  const loadChefs = async () => {
-    const backendChefs = await getBackendChefs();
-    if (backendChefs && backendChefs.length > 0) {
-      setChefs(backendChefs);
-      return;
-    }
-    const response = api.getApprovedChefsWithRatings();
-    if (response.success && response.data) {
-      setChefs(response.data);
-    }
-  };
+    void loadChefs();
+    if (customer.homeAddress) setHomeAddress(customer.homeAddress);
+    if (customer.workAddress) setWorkAddress(customer.workAddress);
+  }, [customer, loadChefs, navigate]);
 
   const selectedChef = chefs.find(c => c.id === selectedChefId);
   const chefDishes: Dish[] = selectedChef?.dishes || [];
@@ -91,7 +116,7 @@ export const Subscribe = () => {
     try {
       // Step 1: Load Razorpay script
       await new Promise<void>((resolve, reject) => {
-        if ((window as any).Razorpay) { resolve(); return; }
+        if ((window as RazorpayWindow).Razorpay) { resolve(); return; }
         const script = document.createElement('script');
         script.src = 'https://checkout.razorpay.com/v1/checkout.js';
         script.onload = () => resolve();
@@ -137,7 +162,7 @@ export const Subscribe = () => {
         return;
       }
 
-      const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
+      const razorpayKey = orderData.keyId || import.meta.env.VITE_RAZORPAY_KEY_ID;
       if (!razorpayKey) {
         toast({
           title: 'Configuration error',
@@ -148,20 +173,20 @@ export const Subscribe = () => {
         return;
       }
 
-      const userName = (user as any).fullName ?? (user as any).name ?? '';
+      const userName = customer?.name || '';
 
       // Step 5: Stop loading BEFORE opening popup
       setLoading(false);
 
       // Step 6: Open Razorpay popup
-      const options = {
+      const options: RazorpayOptions = {
         key: razorpayKey,
         amount: orderData.order.amount,
         currency: 'INR',
         name: 'ZYNK Bites',
         description: `${plan} subscription`,
         order_id: orderData.order.id,
-        handler: async (response: any) => {
+        handler: async (response) => {
           try {
             const verifyRes = await fetch(`${apiBase}/api/payment/verify`, {
               method: 'POST',
@@ -216,10 +241,15 @@ export const Subscribe = () => {
         },
       };
 
-      const rzp = new (window as any).Razorpay(options);
+      const RazorpayCheckout = (window as RazorpayWindow).Razorpay;
+      if (!RazorpayCheckout) {
+        throw new Error('Razorpay checkout is unavailable.');
+      }
+
+      const rzp = new RazorpayCheckout(options);
       rzp.open();
 
-    } catch (err) {
+    } catch {
       toast({
         title: 'Error',
         description: 'Payment failed. Please try again.',

@@ -19,6 +19,7 @@ import Checkout from "./pages/Checkout";
 import Profile from "./pages/Profile";
 import Admin from "./pages/Admin";
 import ChefDashboard from "./pages/ChefDashboard";
+import PaymentSuccess from "./pages/PaymentSuccess";
 
 const queryClient = new QueryClient();
 
@@ -41,9 +42,11 @@ const App = () => (
               <Route path="/meal-recommendations" element={<MealRecommendations />} />
               <Route path="/weekly-menu" element={<WeeklyMenu />} />
               <Route path="/checkout" element={<Checkout />} />
+              <Route path="/payment-success" element={<PaymentSuccess />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/chef-dashboard" element={<ChefDashboard />} />
+              <Route path="/chef-partner" element={<ChefDashboard />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

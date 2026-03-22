@@ -11,6 +11,9 @@ export const registerSchema = z.object({
   role: z.enum(['customer', 'chef']).optional().default('customer'),
   chefBusinessName: z.string().max(255).optional(),
   phone: z.string().max(20).optional(),
+  specialty: z.string().max(255).optional(),
+  bio: z.string().max(500).optional(),
+  serviceArea: z.string().max(255).optional(),
 });
 
 // Schema for user login

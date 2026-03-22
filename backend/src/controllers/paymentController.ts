@@ -92,8 +92,8 @@ export const verifyPayment = async (req: Request, res: Response) => {
     }
 
     const deliveryAddress = `${homeAddress.street}, ${homeAddress.city}, ${homeAddress.state || ''} - ${homeAddress.zipCode}`.trim();
-    const parsedChefId = chefId != null ? parseInt(String(chefId), 10) : null;
-    const chefIdValue = !Number.isNaN(parsedChefId) && parsedChefId > 0 ? parsedChefId : null;
+    const parsedChefId = Number.parseInt(String(chefId ?? ''), 10);
+    const chefIdValue = Number.isInteger(parsedChefId) && parsedChefId > 0 ? parsedChefId : null;
     const isLocked = isSkipSwapLockedByTime();
 
     const subscription = await createSubscription({
