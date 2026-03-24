@@ -663,10 +663,23 @@ export const Register = () => {
     try {
       let customerSession;
       if (selectedChefId.startsWith('mock-chef-')) {
+        const mockEmail = email.trim() || `mock${Date.now()}@example.com`;
+        const regRes = api.registerCustomer(
+          mockEmail,
+          password || 'testpass123',
+          name.trim() || 'Mock User',
+          phone,
+          isAddressComplete(homeAddress) ? homeAddress : undefined,
+          isAddressComplete(workAddress) ? workAddress : undefined
+        );
+        
+        // If they already exist in the mock DB, fetch them
+        const mockUserId = regRes.data?.id || (api.login(mockEmail, password || 'testpass123') as any)?.data?.id || '999';
+
         customerSession = {
           success: true,
-          token: 'mock-token',
-          user: { id: 999, email: email.trim() || 'mock@example.com', fullName: name.trim() || 'Mock User', role: 'customer' }
+          token: `mock-token-${Date.now()}`,
+          user: { id: mockUserId, email: mockEmail, fullName: name.trim() || 'Mock User', role: 'customer' }
         } as any;
       } else {
         customerSession = await ensureBackendCustomerSession();
@@ -749,6 +762,13 @@ export const Register = () => {
         handler: async (response: RazorpayHandlerResponse) => {
           try {
             if (selectedChefId.startsWith('mock-chef-')) {
+              api.subscribe(
+                customerSession.user.id,
+                selectedPlan,
+                homeAddress || { street: '123 Test St', city: 'Mock City', state: 'NY', zipCode: '10001' },
+                'home',
+                selectedChefId
+              );
               persistAuthenticatedCustomer(customerSession.user, customerSession.token);
               toast({ title: 'Payment successful', description: 'Your subscription is now active (Mock Mode).' });
               navigate('/dashboard');

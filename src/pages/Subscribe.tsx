@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getBackendApiBaseUrl, getApiToken, getChefsWithRatings as getBackendChefs } from '@/services/backend';
 import { useToast } from '@/hooks/use-toast';
 import type { Address, PlanType, Customer, Dish, Chef } from '@/types';
+import * as api from '@/services/api';
 
 type Step = 'chef' | 'menu' | 'plan' | 'address' | 'confirm' | 'payment';
 type ChefWithData = Chef & { dishes: Dish[]; avgRating?: number; reviewCount?: number };
@@ -270,6 +271,13 @@ export const Subscribe = () => {
         handler: async (response: RazorpayHandlerResponse) => {
           try {
             if (selectedChefId.startsWith('mock-chef-')) {
+              api.subscribe(
+                user.id,
+                plan,
+                homeAddress || { street: '123 Test St', city: 'Mock City', state: 'NY', zipCode: '10001' },
+                'home',
+                selectedChefId
+              );
               toast({ title: '🎉 Payment Successful!', description: 'Your subscription is now active (Mock Mode).' });
               navigate('/dashboard');
               return;
