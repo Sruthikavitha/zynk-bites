@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import * as api from '@/services/api';
 import {
   getApiToken,
@@ -112,8 +112,10 @@ const CutoffBanner = () => {
 export const CustomerDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const activatedSubscription = (location.state as { activatedSubscription?: Subscription } | null)?.activatedSubscription || null;
+  const [subscription, setSubscription] = useState<Subscription | null>(activatedSubscription);
   const [dailyMeals, setDailyMeals] = useState<DailyMeal[]>([]);
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
   const [allDishes, setAllDishes] = useState<Dish[]>([]);
@@ -195,7 +197,13 @@ export const CustomerDashboard = () => {
       setSubscription(backendSub);
     } else {
       const subResponse = api.getSubscription(user.id);
-      if (subResponse.success) setSubscription(subResponse.data || null);
+      if (subResponse.success && subResponse.data) {
+        setSubscription(subResponse.data || null);
+      } else if (activatedSubscription) {
+        setSubscription(activatedSubscription);
+      } else {
+        setSubscription(null);
+      }
     }
 
     let backendDailyMeals: DailyMeal[] | null = null;

@@ -35,7 +35,7 @@ import {
   Star,
   UtensilsCrossed,
 } from 'lucide-react';
-import type { Address, Customer, PlanType } from '@/types';
+import type { Address, Customer, PlanType, Subscription } from '@/types';
 
 type RegistrationType = 'customer' | 'chef';
 type RegistrationStep = 'basic' | 'addresses' | 'chef' | 'payment' | 'kitchen';
@@ -59,9 +59,9 @@ const isAddressComplete = (address: Address) =>
 const isLiveChefId = (chefId: string | null) => Boolean(chefId && (/^\d+$/.test(chefId) || chefId.startsWith('mock-chef-')));
 
 type RazorpayHandlerResponse = {
-  razorpay_order_id: string;
+  razorpay_order_id?: string;
   razorpay_payment_id: string;
-  razorpay_signature: string;
+  razorpay_signature?: string;
 };
 
 type RazorpayOptions = {
@@ -70,8 +70,10 @@ type RazorpayOptions = {
   currency: string;
   name: string;
   description: string;
-  order_id: string;
+  order_id?: string;
   handler: (response: RazorpayHandlerResponse) => void | Promise<void>;
+  method?: Record<string, boolean>;
+  config?: Record<string, unknown>;
   prefill?: {
     name?: string;
     email?: string;
@@ -103,13 +105,95 @@ const loadRazorpayCheckout = async () => {
       return;
     }
 
+    const existingScript = document.querySelector<HTMLScriptElement>('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+    const timeout = window.setTimeout(() => reject(new Error('Razorpay checkout timed out while loading.')), 10000);
+
+    const cleanup = () => window.clearTimeout(timeout);
+    const handleLoad = () => {
+      cleanup();
+      if ((window as RazorpayWindow).Razorpay) {
+        resolve();
+        return;
+      }
+
+      reject(new Error('Razorpay checkout loaded incorrectly.'));
+    };
+    const handleError = () => {
+      cleanup();
+      reject(new Error('Failed to load Razorpay checkout'));
+    };
+
+    if (existingScript) {
+      existingScript.addEventListener('load', handleLoad, { once: true });
+      existingScript.addEventListener('error', handleError, { once: true });
+      return;
+    }
+
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Failed to load Razorpay checkout'));
-    document.body.appendChild(script);
+    script.async = true;
+    script.onload = handleLoad;
+    script.onerror = handleError;
+    document.head.appendChild(script);
   });
 };
+
+const getPaymentStartErrorMessage = (error: unknown) => {
+  if (error instanceof Error && error.message === 'Failed to fetch') {
+    return 'Backend payment API is not reachable. Start the backend on http://localhost:3002 and try again.';
+  }
+
+  return error instanceof Error ? error.message : 'Unable to start Razorpay checkout.';
+};
+
+const getRazorpayMethodConfig = (paymentMethod: 'upi' | 'debit' | 'credit' | 'netbanking') => {
+  if (paymentMethod === 'upi') {
+    return {
+      method: { upi: true, card: false, netbanking: false, wallet: false },
+      config: {
+        display: {
+          blocks: {
+            preferred: {
+              name: 'Pay using UPI',
+              instruments: [{ method: 'upi' }],
+            },
+          },
+          sequence: ['block.preferred'],
+          preferences: { show_default_blocks: false },
+        },
+      },
+    };
+  }
+
+  if (paymentMethod === 'netbanking') {
+    return { method: { upi: false, card: false, netbanking: true, wallet: false } };
+  }
+
+  return { method: { upi: false, card: true, netbanking: false, wallet: false } };
+};
+
+const buildActivatedSubscription = ({
+  customerId,
+  plan,
+  address,
+  chefId,
+}: {
+  customerId: string;
+  plan: PlanType;
+  address: Address;
+  chefId?: string | null;
+}): Subscription => ({
+  id: `subscription-${Date.now()}`,
+  customerId,
+  plan,
+  mealTime: plan === 'basic' ? 'lunch' : 'both',
+  mealSlots: plan === 'premium' ? ['breakfast', 'lunch', 'dinner'] : plan === 'standard' ? ['lunch', 'dinner'] : ['lunch'],
+  startDate: new Date().toISOString(),
+  status: 'active',
+  address,
+  activeAddressType: 'home',
+  selectedChefId: chefId || undefined,
+});
 
 const AddressForm = ({ 
   address, 
@@ -333,164 +417,11 @@ export const Register = () => {
     setLoadingChefs(true);
     try {
       const backendChefs = await getBackendChefs();
-      if (backendChefs && backendChefs.length > 0) {
-        setChefs(backendChefs as ChefWithData[]);
-        setHasLiveChefCatalog(true);
-        return;
-      }
-
-      const mockChefs: any[] = [
-        {
-          id: 'mock-chef-1',
-          name: 'Chef Sanjeev',
-          email: 'sanjeev@example.com',
-          role: 'chef',
-          status: 'approved',
-          rating: 4.8,
-          totalOrders: 154,
-          specialty: 'North Indian, Punjabi',
-          avgRating: 4.8,
-          reviewCount: 124,
-          serviceArea: 'Coimbatore Central',
-          dishes: [
-            { id: 'd1', name: 'Paneer Butter Masala', category: 'veg', chefId: 'mock-chef-1', description: 'Rich paneer dish', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 350, protein: 12, carbs: 10, fat: 28 } },
-            { id: 'd2', name: 'Garlic Naan', category: 'veg', chefId: 'mock-chef-1', description: 'Soft naan', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 150, protein: 4, carbs: 20, fat: 5 } },
-            { id: 'd3', name: 'Dal Makhani', category: 'veg', chefId: 'mock-chef-1', description: 'Creamy dal', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 250, protein: 8, carbs: 30, fat: 12 } },
-          ],
-          reviews: [],
-          menuCharts: [
-            {
-              id: 'mc1',
-              chefId: 'mock-chef-1',
-              month: 'March',
-              year: 2026,
-              days: [
-                { date: new Date().toISOString().split('T')[0], slots: { lunch: { mealId: 'd1' }, dinner: { mealId: 'd3' } } }
-              ]
-            }
-          ]
-        },
-        {
-          id: 'mock-chef-2',
-          name: 'Chef Meenakshi',
-          email: 'meenakshi@example.com',
-          role: 'chef',
-          status: 'approved',
-          rating: 4.9,
-          totalOrders: 210,
-          specialty: 'South Indian, Chettinad',
-          avgRating: 4.9,
-          reviewCount: 189,
-          serviceArea: 'RS Puram',
-          dishes: [
-            { id: 'd4', name: 'Chettinad Chicken', category: 'non-veg', chefId: 'mock-chef-2', description: 'Spicy chicken curry', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 400, protein: 25, carbs: 10, fat: 20 } },
-            { id: 'd5', name: 'Mutton Chukka', category: 'non-veg', chefId: 'mock-chef-2', description: 'Dry roasted mutton', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 450, protein: 28, carbs: 5, fat: 25 } },
-          ],
-          reviews: [],
-          menuCharts: [
-            {
-              id: 'mc2',
-              chefId: 'mock-chef-2',
-              month: 'March',
-              year: 2026,
-              days: [
-                { date: new Date().toISOString().split('T')[0], slots: { lunch: { mealId: 'd4' }, dinner: { mealId: 'd5' } } }
-              ]
-            }
-          ]
-        },
-        {
-          id: 'mock-chef-3',
-          name: 'Chef Rajesh',
-          email: 'rajesh@example.com',
-          role: 'chef',
-          status: 'approved',
-          rating: 4.6,
-          totalOrders: 89,
-          specialty: 'Continental, Italian',
-          avgRating: 4.6,
-          reviewCount: 45,
-          serviceArea: 'Peelamedu',
-          dishes: [
-            { id: 'd6', name: 'Pesto Pasta', category: 'veg', chefId: 'mock-chef-3', description: 'Creamy basil pesto', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 500, protein: 15, carbs: 60, fat: 20 } },
-            { id: 'd7', name: 'Garlic Bread', category: 'veg', chefId: 'mock-chef-3', description: 'Toasted loaded bread', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 200, protein: 5, carbs: 30, fat: 10 } },
-          ],
-          reviews: [],
-          menuCharts: [
-            {
-              id: 'mc3',
-              chefId: 'mock-chef-3',
-              month: 'March',
-              year: 2026,
-              days: [
-                { date: new Date().toISOString().split('T')[0], slots: { lunch: { mealId: 'd6' }, dinner: { mealId: 'd7' } } }
-              ]
-            }
-          ]
-        },
-        {
-          id: 'mock-chef-4',
-          name: 'Chef Priya',
-          email: 'priya@example.com',
-          role: 'chef',
-          status: 'approved',
-          rating: 4.7,
-          totalOrders: 130,
-          specialty: 'Healthy, Salads',
-          avgRating: 4.7,
-          reviewCount: 92,
-          serviceArea: 'Saibaba Colony',
-          dishes: [
-            { id: 'd8', name: 'Quinoa Salad', category: 'veg', chefId: 'mock-chef-4', description: 'Fresh veggies and quinoa', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 250, protein: 12, carbs: 30, fat: 8 } },
-            { id: 'd9', name: 'Grilled Cauliflower Steaks', category: 'veg', chefId: 'mock-chef-4', description: 'Spiced and grilled', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 180, protein: 6, carbs: 15, fat: 10 } },
-          ],
-          reviews: [],
-          menuCharts: [
-            {
-              id: 'mc4',
-              chefId: 'mock-chef-4',
-              month: 'March',
-              year: 2026,
-              days: [
-                { date: new Date().toISOString().split('T')[0], slots: { lunch: { mealId: 'd8' }, dinner: { mealId: 'd9' } } }
-              ]
-            }
-          ]
-        },
-        {
-          id: 'mock-chef-5',
-          name: 'Chef Anand',
-          email: 'anand@example.com',
-          role: 'chef',
-          status: 'approved',
-          rating: 4.5,
-          totalOrders: 65,
-          specialty: 'Keto, Low Carb',
-          avgRating: 4.5,
-          reviewCount: 38,
-          serviceArea: 'Vadavalli',
-          dishes: [
-            { id: 'd10', name: 'Keto Chicken Bowl', category: 'non-veg', chefId: 'mock-chef-5', description: 'Chicken with avocado', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 400, protein: 35, carbs: 8, fat: 25 } },
-          ],
-          reviews: [],
-          menuCharts: [
-            {
-              id: 'mc5',
-              chefId: 'mock-chef-5',
-              month: 'March',
-              year: 2026,
-              days: [
-                { date: new Date().toISOString().split('T')[0], slots: { lunch: { mealId: 'd10' }, dinner: { mealId: 'd10' } } }
-              ]
-            }
-          ]
-        }
-      ];
-
+      const liveChefs = (backendChefs || []) as ChefWithData[];
       const localApprovedResponse = api.getApprovedChefs();
       const localApprovedChefs = localApprovedResponse.success ? localApprovedResponse.data || [] : [];
-      
-      const dynamicChefs = localApprovedChefs.map(chef => {
+
+      const localApprovedWithDishes = localApprovedChefs.map((chef) => {
         const dishesResp = api.getChefDishes(chef.id);
         const dishes = dishesResp.success ? dishesResp.data || [] : [];
         return {
@@ -501,13 +432,13 @@ export const Register = () => {
         };
       });
 
-      const allChefs = [...mockChefs, ...dynamicChefs];
-      const uniqueChefsMap = new Map();
-      allChefs.forEach(c => uniqueChefsMap.set(c.id, c));
-      const finalChefs = Array.from(uniqueChefsMap.values());
+      const uniqueChefsMap = new Map<string, ChefWithData>();
+      [...liveChefs, ...localApprovedWithDishes].forEach((chef) => {
+        uniqueChefsMap.set(chef.id, chef as ChefWithData);
+      });
 
-      setChefs(finalChefs as ChefWithData[]);
-      setHasLiveChefCatalog(true);
+      setChefs(Array.from(uniqueChefsMap.values()));
+      setHasLiveChefCatalog(liveChefs.length > 0 || localApprovedWithDishes.length > 0);
     } finally {
       setLoadingChefs(false);
     }
@@ -664,7 +595,8 @@ export const Register = () => {
       return;
     }
 
-    if (!hasLiveChefCatalog || !isLiveChefId(selectedChefId)) {
+    const isMockFlow = selectedChefId.startsWith('mock-chef-') || selectedChefId.startsWith('chef-');
+    if (!hasLiveChefCatalog && !isMockFlow) {
       toast({
         title: 'Live chef data required',
         description: 'Start the backend and load approved chefs before taking a Razorpay payment.',
@@ -695,7 +627,7 @@ export const Register = () => {
 
     try {
       let customerSession;
-      if (selectedChefId.startsWith('mock-chef-')) {
+      if (isMockFlow) {
         const mockEmail = email.trim() || `mock${Date.now()}@example.com`;
         const regRes = api.registerCustomer(
           mockEmail,
@@ -730,49 +662,7 @@ export const Register = () => {
 
       await loadRazorpayCheckout();
 
-      let apiBase = getBackendApiBaseUrl();
-      if (apiBase.endsWith('/api')) {
-        apiBase = apiBase.replace(/\/api\/?$/, '');
-      }
-      if (!apiBase) {
-        apiBase = `${window.location.protocol}//${window.location.hostname}:3002`;
-      }
-
-      
-      let orderData;
-      if (selectedChefId.startsWith('mock-chef-')) {
-        orderData = {
-          success: true,
-          order: { amount: planAmounts[selectedPlan] || planAmounts.standard, id: 'order_mock_123' },
-          keyId: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_STz4joVjA8LzYP'
-        };
-      } else {
-        const orderRes = await fetch(`${apiBase}/api/payment/create-order`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${customerSession.token}`,
-          },
-          body: JSON.stringify({
-            amount: planAmounts[selectedPlan] || planAmounts.standard,
-            currency: 'INR',
-            plan: selectedPlan,
-          }),
-        });
-        orderData = await orderRes.json();
-      }
-
-      if (!orderData || !orderData.success || !orderData.order) {
-        toast({
-          title: 'Payment setup failed',
-          description: orderData?.message || 'Unable to create a Razorpay order.',
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      const razorpayKey = orderData.keyId || import.meta.env.VITE_RAZORPAY_KEY_ID;
+      const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
       if (!razorpayKey) {
         toast({
           title: 'Configuration error',
@@ -783,18 +673,26 @@ export const Register = () => {
         return;
       }
 
+      let apiBase = getBackendApiBaseUrl();
+      if (apiBase.endsWith('/api')) {
+        apiBase = apiBase.replace(/\/api\/?$/, '');
+      }
+      if (!apiBase) {
+        apiBase = `${window.location.protocol}//${window.location.hostname}:3002`;
+      }
+
       setIsLoading(false);
 
-      const options: any = {
+      const baseOptions: RazorpayOptions = {
         key: razorpayKey,
-        amount: orderData.order.amount,
+        amount: planAmounts[selectedPlan] || planAmounts.standard,
         currency: 'INR',
         name: 'ZYNK Bites',
         description: `${selectedPlanOption.name} subscription`,
-        ...(selectedChefId.startsWith('mock-chef-') ? {} : { order_id: orderData.order.id }),
+        ...getRazorpayMethodConfig(paymentMethod),
         handler: async (response: RazorpayHandlerResponse) => {
           try {
-            if (selectedChefId.startsWith('mock-chef-')) {
+            if (isMockFlow) {
               api.subscribe(
                 customerSession.user.id,
                 selectedPlan,
@@ -804,7 +702,16 @@ export const Register = () => {
               );
               persistAuthenticatedCustomer(customerSession.user, customerSession.token);
               toast({ title: 'Payment successful', description: 'Your subscription is now active (Mock Mode).' });
-              navigate('/dashboard');
+              navigate('/dashboard', {
+                state: {
+                  activatedSubscription: buildActivatedSubscription({
+                    customerId: String(customerSession.user.id),
+                    plan: selectedPlan,
+                    address: homeAddress,
+                    chefId: selectedChefId,
+                  }),
+                },
+              });
               return;
             }
 
@@ -838,7 +745,16 @@ export const Register = () => {
 
             persistAuthenticatedCustomer(customerSession.user, customerSession.token);
             toast({ title: 'Payment successful', description: 'Your subscription is now active.' });
-            navigate('/dashboard');
+            navigate('/dashboard', {
+              state: {
+                activatedSubscription: buildActivatedSubscription({
+                  customerId: String(customerSession.user.id),
+                  plan: selectedPlan,
+                  address: homeAddress,
+                  chefId: selectedChefId,
+                }),
+              },
+            });
           } catch {
             toast({
               title: 'Payment verification failed',
@@ -863,6 +779,34 @@ export const Register = () => {
         },
       };
 
+      let options: RazorpayOptions = baseOptions;
+      if (!isMockFlow) {
+        const orderRes = await fetch(`${apiBase}/api/payment/create-order`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${customerSession.token}`,
+          },
+          body: JSON.stringify({
+            amount: planAmounts[selectedPlan] || planAmounts.standard,
+            currency: 'INR',
+            plan: selectedPlan,
+          }),
+        });
+
+        const orderData = await orderRes.json();
+        if (!orderRes.ok || !orderData?.success || !orderData.order) {
+          throw new Error(orderData?.message || 'Unable to create a Razorpay order.');
+        }
+
+        options = {
+          ...baseOptions,
+          key: orderData.keyId || razorpayKey,
+          amount: orderData.order.amount,
+          order_id: orderData.order.id as string,
+        };
+      }
+
       const RazorpayCheckout = (window as RazorpayWindow).Razorpay;
       if (!RazorpayCheckout) {
         throw new Error('Razorpay checkout is unavailable.');
@@ -874,7 +818,7 @@ export const Register = () => {
       setIsLoading(false);
       toast({
         title: 'Payment failed',
-        description: error instanceof Error ? error.message : 'Unable to start Razorpay checkout.',
+        description: getPaymentStartErrorMessage(error),
         variant: 'destructive',
       });
     }

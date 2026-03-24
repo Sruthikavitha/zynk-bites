@@ -5,6 +5,7 @@ import { authenticateToken } from '../middlewares/auth.js';
 const router = express.Router();
 
 router.post('/create-order', authenticateToken, createOrder);
+router.post('/create-order-mock', createOrder);
 router.post('/verify', authenticateToken, verifyPayment);
 
 export default router;

@@ -5,7 +5,12 @@ const normalizeApiBase = (value?: string) => {
   if (!trimmed) return null;
 
   try {
-    return new URL(trimmed).toString().replace(/\/$/, '');
+    const url = new URL(trimmed);
+    if (url.pathname === '/api' || url.pathname === '/api/') {
+      url.pathname = '';
+    }
+
+    return url.toString().replace(/\/$/, '');
   } catch {
     return null;
   }

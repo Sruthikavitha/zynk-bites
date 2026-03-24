@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type ElementType } from "react";
 import { Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { useAuth } from "@/contexts/AuthContext";
+import * as api from "@/services/api";
 import {
   approveChefApproval,
   getAllChefApprovals,
@@ -14,6 +15,27 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle2, Clock3, MapPin, ShieldCheck, Users } from "lucide-react";
+import type { Chef } from "@/types";
+
+const mapLocalChefToAdminChef = (chef: Chef): BackendAdminChef => ({
+  id: chef.id,
+  name: chef.name,
+  email: chef.email,
+  role: "chef",
+  status: chef.status === "approved" ? "approved" : "pending",
+  specialty: chef.specialty,
+  bio: chef.bio,
+  serviceArea: chef.serviceArea,
+  phone: null,
+  isDisabled: chef.isDisabled,
+  createdAt: chef.createdAt,
+});
+
+const dedupeChefs = (chefs: BackendAdminChef[]) => {
+  const chefMap = new Map<string, BackendAdminChef>();
+  chefs.forEach((chef) => chefMap.set(chef.id, chef));
+  return Array.from(chefMap.values());
+};
 
 const Admin = () => {
   const { user } = useAuth();
@@ -39,8 +61,11 @@ const Admin = () => {
       getAllChefApprovals(token),
     ]);
 
-    setPendingChefs(pending || []);
-    setApprovedChefs((all || []).filter((chef) => chef.status === "approved"));
+    const localPending = (api.getPendingChefs().data || []).map(mapLocalChefToAdminChef);
+    const localAll = (api.getAllChefs().data || []).map(mapLocalChefToAdminChef);
+
+    setPendingChefs(dedupeChefs([...(pending || []), ...localPending]).filter((chef) => chef.status !== "approved"));
+    setApprovedChefs(dedupeChefs([...(all || []), ...localAll]).filter((chef) => chef.status === "approved"));
     setLoading(false);
   }, [token, user?.role]);
 
@@ -52,7 +77,17 @@ const Admin = () => {
     if (!token) return;
     setSubmittingChefId(chefId);
 
-    const response = await approveChefApproval(token, chefId);
+    const isBackendChefId = /^\d+$/.test(chefId);
+    const response = isBackendChefId
+      ? await approveChefApproval(token, chefId)
+      : (() => {
+          const localResponse = api.approveChef(chefId);
+          return {
+            success: localResponse.success,
+            message: localResponse.message || localResponse.error,
+          };
+        })();
+
     if (response.success) {
       toast({
         title: "Chef approved",

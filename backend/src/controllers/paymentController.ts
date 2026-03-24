@@ -6,6 +6,17 @@ import { getNextBillingDate, isSkipSwapLockedByTime } from '../utils/subscriptio
 import { ensureUpcomingMealsForCustomer } from '../services/mealPlannerService.js';
 import { notifyPaymentFailure, notifySubscriptionSuccess } from '../services/notificationService.js';
 
+const hasValidRazorpayConfig = () => {
+  const keyId = process.env.RAZORPAY_KEY_ID?.trim();
+  const keySecret = process.env.RAZORPAY_KEY_SECRET?.trim();
+
+  return Boolean(
+    keyId &&
+      keySecret &&
+      keySecret !== 'Paste_Your_Secret_Here'
+  );
+};
+
 const getRazorpay = () => {
   return new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID!,
@@ -21,6 +32,13 @@ const planConfig: Record<string, { mealsPerWeek: number; priceInCents: number }>
 
 export const createOrder = async (req: Request, res: Response) => {
   try {
+    if (!hasValidRazorpayConfig()) {
+      return res.status(500).json({
+        success: false,
+        message: 'Razorpay is not configured on the backend. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.',
+      });
+    }
+
     const { amount, currency = 'INR', plan } = req.body;
 
     if (!amount || Number.isNaN(Number(amount)) || Number(amount) < 1) {
@@ -52,6 +70,13 @@ export const createOrder = async (req: Request, res: Response) => {
 
 export const verifyPayment = async (req: Request, res: Response) => {
   try {
+    if (!hasValidRazorpayConfig()) {
+      return res.status(500).json({
+        success: false,
+        message: 'Razorpay is not configured on the backend. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.',
+      });
+    }
+
     const {
       razorpay_order_id,
       razorpay_payment_id,

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { getBackendApiBaseUrl, getApiToken, getChefProfile } from "@/services/backend";
-import type { Address, Customer, PlanType } from "@/types";
+import type { Address, Customer, PlanType, Subscription } from "@/types";
 import {
   CalendarDays,
   ChefHat,
@@ -33,6 +33,8 @@ type RazorpayOptions = {
   description: string;
   order_id: string;
   handler: (response: RazorpayHandlerResponse) => void | Promise<void>;
+  method?: Record<string, boolean>;
+  config?: Record<string, unknown>;
   prefill?: {
     name?: string;
     email?: string;
@@ -94,13 +96,95 @@ const loadRazorpayCheckout = async () => {
       return;
     }
 
+    const existingScript = document.querySelector<HTMLScriptElement>('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+    const timeout = window.setTimeout(() => reject(new Error("Razorpay checkout timed out while loading.")), 10000);
+
+    const cleanup = () => window.clearTimeout(timeout);
+    const handleLoad = () => {
+      cleanup();
+      if ((window as RazorpayWindow).Razorpay) {
+        resolve();
+        return;
+      }
+
+      reject(new Error("Razorpay checkout loaded incorrectly."));
+    };
+    const handleError = () => {
+      cleanup();
+      reject(new Error("Failed to load Razorpay checkout"));
+    };
+
+    if (existingScript) {
+      existingScript.addEventListener("load", handleLoad, { once: true });
+      existingScript.addEventListener("error", handleError, { once: true });
+      return;
+    }
+
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load Razorpay checkout"));
-    document.body.appendChild(script);
+    script.async = true;
+    script.onload = handleLoad;
+    script.onerror = handleError;
+    document.head.appendChild(script);
   });
 };
+
+const getPaymentStartErrorMessage = (error: unknown) => {
+  if (error instanceof Error && error.message === "Failed to fetch") {
+    return "Backend payment API is not reachable. Start the backend on http://localhost:3002 and try again.";
+  }
+
+  return error instanceof Error ? error.message : "Unable to start payment.";
+};
+
+const getRazorpayMethodConfig = (paymentMethod: "upi" | "debit" | "credit" | "netbanking") => {
+  if (paymentMethod === "upi") {
+    return {
+      method: { upi: true, card: false, netbanking: false, wallet: false },
+      config: {
+        display: {
+          blocks: {
+            preferred: {
+              name: "Pay using UPI",
+              instruments: [{ method: "upi" }],
+            },
+          },
+          sequence: ["block.preferred"],
+          preferences: { show_default_blocks: false },
+        },
+      },
+    };
+  }
+
+  if (paymentMethod === "netbanking") {
+    return { method: { upi: false, card: false, netbanking: true, wallet: false } };
+  }
+
+  return { method: { upi: false, card: true, netbanking: false, wallet: false } };
+};
+
+const buildActivatedSubscription = ({
+  customerId,
+  plan,
+  address,
+  chefId,
+}: {
+  customerId: string;
+  plan: PlanType;
+  address: Address;
+  chefId?: string;
+}): Subscription => ({
+  id: `subscription-${Date.now()}`,
+  customerId,
+  plan,
+  mealTime: plan === "basic" ? "lunch" : "both",
+  mealSlots: plan === "premium" ? ["breakfast", "lunch", "dinner"] : plan === "standard" ? ["lunch", "dinner"] : ["lunch"],
+  startDate: new Date().toISOString(),
+  status: "active",
+  address,
+  activeAddressType: "home",
+  selectedChefId: chefId,
+});
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -258,6 +342,7 @@ const Checkout = () => {
         name: "ZYNK Bites",
         description: `${planMeta[selectedPlan].name} subscription`,
         order_id: orderData.order.id,
+        ...getRazorpayMethodConfig(paymentMethod),
         handler: async (response) => {
           try {
             const verifyRes = await fetch(`${apiBase}/api/payment/verify`, {
@@ -287,16 +372,19 @@ const Checkout = () => {
               return;
             }
 
-            navigate("/payment-success", {
+            toast({
+              title: "Payment successful",
+              description: "Your subscription is active. You can manage skips and swaps from the dashboard.",
+            });
+
+            navigate("/dashboard", {
               state: {
-                chefName,
-                planName: planMeta[selectedPlan].name,
-                durationLabel: `${selectedDuration} month${selectedDuration > 1 ? "s" : ""}`,
-                mealsLabel: mealOptions.find((option) => option.id === selectedMeals)?.label,
-                startDate,
-                deliveryAddress: formatAddress(selectedAddress),
-                paymentId: response.razorpay_payment_id,
-                amountLabel: priceSummary.finalAmountLabel,
+                activatedSubscription: buildActivatedSubscription({
+                  customerId: customer?.id || "customer",
+                  plan: selectedPlan,
+                  address: selectedAddress,
+                  chefId: routeState.selectedChefId,
+                }),
               },
             });
           } catch {
@@ -334,7 +422,7 @@ const Checkout = () => {
       setLoading(false);
       toast({
         title: "Payment failed",
-        description: error instanceof Error ? error.message : "Unable to start payment.",
+        description: getPaymentStartErrorMessage(error),
         variant: "destructive",
       });
     }
@@ -517,16 +605,21 @@ const Checkout = () => {
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {["upi", "debit", "credit", "netbanking"].map((method) => (
+                      {[
+                        { id: "upi", label: "UPI" },
+                        { id: "debit", label: "DEBIT" },
+                        { id: "credit", label: "CREDIT" },
+                        { id: "netbanking", label: "NETBANKING" },
+                      ].map((method) => (
                         <button
-                          key={method}
+                          key={method.id}
                           type="button"
-                          onClick={() => setPaymentMethod(method as typeof paymentMethod)}
+                          onClick={() => setPaymentMethod(method.id as typeof paymentMethod)}
                           className={`rounded-full px-4 py-2 text-sm transition ${
-                            paymentMethod === method ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-600"
+                            paymentMethod === method.id ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-600"
                           }`}
                         >
-                          {method.toUpperCase()}
+                          {method.label}
                         </button>
                       ))}
                     </div>
