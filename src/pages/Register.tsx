@@ -33,9 +33,10 @@ import {
   ShieldCheck,
   Sparkles,
   Star,
+  RefreshCw,
   UtensilsCrossed,
 } from 'lucide-react';
-import type { Address, Customer, PlanType } from '@/types';
+import type { Address, Chef, Customer, PlanType } from '@/types';
 
 type RegistrationType = 'customer' | 'chef';
 type RegistrationStep = 'basic' | 'addresses' | 'chef' | 'payment' | 'kitchen';
@@ -181,6 +182,8 @@ export const Register = () => {
   const [chefs, setChefs] = useState<ChefWithData[]>([]);
   const [loadingChefs, setLoadingChefs] = useState(false);
   const [hasLiveChefCatalog, setHasLiveChefCatalog] = useState(false);
+  const [chefCatalogOffline, setChefCatalogOffline] = useState(false);
+  const [chefCatalogSource, setChefCatalogSource] = useState<'live' | 'demo' | 'offline'>('live');
   const [selectedChefId, setSelectedChefId] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<PlanType>('standard');
   const [paymentMethod, setPaymentMethod] = useState<'upi' | 'debit' | 'credit' | 'netbanking'>('upi');
@@ -208,6 +211,19 @@ export const Register = () => {
     basic: 299900,
     standard: 449900,
     premium: 599900,
+  };
+
+  const getPlanPrice = (planId: PlanType) => {
+    switch (planId) {
+      case 'basic':
+        return 'INR 2,999';
+      case 'standard':
+        return 'INR 4,499';
+      case 'premium':
+        return 'INR 5,999';
+      default:
+        return 'INR 0';
+    }
   };
 
   const selectedChef = chefs.find((chef) => chef.id === selectedChefId) || null;
@@ -245,7 +261,7 @@ export const Register = () => {
   };
 
   const chefStepHighlights = [
-    { icon: Sparkles, value: `${chefs.length || 0}+`, label: 'Approved chefs' },
+    { icon: Sparkles, value: loadingChefs ? '...' : `${chefs.length}`, label: 'Approved chefs' },
     { icon: Clock3, value: '8 PM', label: 'Skip or swap cutoff' },
     { icon: ShieldCheck, value: 'Secure', label: 'Razorpay checkout' },
   ];
@@ -261,6 +277,20 @@ export const Register = () => {
     workAddress: isAddressComplete(workAddress) ? { ...workAddress } : undefined,
     selectedChefId: selectedChefId || undefined,
     createdAt: new Date().toISOString(),
+  });
+
+  const buildAuthenticatedChef = (backendUser: BackendAuthUser): Chef => ({
+    id: String(backendUser.id),
+    email: backendUser.email,
+    password: '',
+    name: backendUser.fullName,
+    role: 'chef',
+    status: backendUser.isActive ? 'approved' : 'pending',
+    phone: backendUser.phone || undefined,
+    specialty: backendUser.specialty || backendUser.chefBusinessName || undefined,
+    bio: backendUser.bio || undefined,
+    serviceArea: backendUser.serviceArea || undefined,
+    createdAt: backendUser.createdAt || new Date().toISOString(),
   });
 
   const persistAuthenticatedCustomer = (backendUser: BackendAuthUser, token: string) => {
@@ -333,14 +363,29 @@ export const Register = () => {
     setLoadingChefs(true);
     try {
       const backendChefs = await getBackendChefs();
-      if (backendChefs && backendChefs.length > 0) {
-        setChefs(backendChefs as ChefWithData[]);
+      if (backendChefs !== null) {
+        const nextChefs = backendChefs as ChefWithData[];
+        setChefs(nextChefs);
         setHasLiveChefCatalog(true);
+        setChefCatalogOffline(false);
+        setChefCatalogSource('live');
+        setSelectedChefId((currentChefId) => {
+          if (nextChefs.length === 0) return null;
+          return nextChefs.some((chef) => chef.id === currentChefId) ? currentChefId : nextChefs[0].id;
+        });
         return;
       }
 
-      setChefs([]);
+      const demoCatalog = api.getApprovedChefsWithRatings();
+      const nextChefs = demoCatalog.success && demoCatalog.data ? demoCatalog.data : [];
+      setChefs(nextChefs);
       setHasLiveChefCatalog(false);
+      setChefCatalogOffline(!demoCatalog.success);
+      setChefCatalogSource(demoCatalog.success ? 'demo' : 'offline');
+      setSelectedChefId((currentChefId) => {
+        if (nextChefs.length === 0) return null;
+        return nextChefs.some((chef) => chef.id === currentChefId) ? currentChefId : nextChefs[0].id;
+      });
     } finally {
       setLoadingChefs(false);
     }
@@ -430,6 +475,17 @@ export const Register = () => {
       });
 
       if (response.success) {
+        if (response.token && response.user?.role === 'chef') {
+          setApiToken(response.token);
+          login(buildAuthenticatedChef(response.user));
+          toast({
+            title: 'Chef profile submitted',
+            description: 'Your backend chef workspace is ready. Add dishes now while admin approval is pending.',
+          });
+          navigate('/dashboard');
+          return;
+        }
+
         toast({
           title: 'Application submitted',
           description: 'An admin must approve your chef profile before it becomes visible to customers.',
@@ -483,15 +539,6 @@ export const Register = () => {
       return;
     }
 
-    if (!hasLiveChefCatalog || !isLiveChefId(selectedChefId)) {
-      toast({
-        title: 'Live chef data required',
-        description: 'Start the backend and load approved chefs before taking a Razorpay payment.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     if (!isAddressComplete(homeAddress)) {
       toast({
         title: 'Complete home address',
@@ -511,13 +558,17 @@ export const Register = () => {
     }
 
     setIsLoading(true);
+    const paymentChefId = isLiveChefId(selectedChefId) ? selectedChefId : undefined;
 
     try {
       const customerSession = await ensureBackendCustomerSession();
       if (!customerSession.success) {
+        const isBackendUnavailable = customerSession.message?.includes(BACKEND_UNREACHABLE_MESSAGE);
         toast({
-          title: 'Registration failed',
-          description: customerSession.message,
+          title: isBackendUnavailable ? 'Payment unavailable' : 'Registration failed',
+          description: isBackendUnavailable
+            ? 'We could not start secure checkout right now. Please try again in a moment.'
+            : customerSession.message,
           variant: 'destructive',
         });
         setIsLoading(false);
@@ -591,7 +642,7 @@ export const Register = () => {
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
                 plan: selectedPlan,
-                chefId: selectedChefId,
+                chefId: paymentChefId,
                 homeAddress,
                 workAddress: isAddressComplete(workAddress) ? workAddress : undefined,
                 paymentMethod,
@@ -685,6 +736,15 @@ export const Register = () => {
   const menuChartDays = selectedChef ? getMenuChartDays(selectedChef) : [];
   const selectedChefDishPreview = selectedChef ? getChefDishPreview(selectedChef) : [];
   const selectedPlanExperience = planExperience[selectedPlan];
+  const chefCatalogStatusLabel = loadingChefs
+    ? 'Loading chefs...'
+    : chefCatalogSource === 'demo'
+      ? `${chefs.length} approved chefs (demo)`
+      : chefCatalogOffline
+      ? 'Backend offline'
+      : chefs.length === 0
+        ? 'Awaiting approval'
+        : `${chefs.length} approved chefs`;
 
   return (
     <Layout>
@@ -867,6 +927,9 @@ export const Register = () => {
                     <div className="max-w-2xl">
                       <div className="flex flex-wrap gap-2">
                         <Badge className="rounded-full bg-white/15 px-3 py-1 text-white hover:bg-white/15">Admin approved chefs</Badge>
+                        {chefCatalogSource === 'demo' && (
+                          <Badge className="rounded-full bg-white/15 px-3 py-1 text-white hover:bg-white/15">Demo catalog</Badge>
+                        )}
                         <Badge className="rounded-full bg-white/15 px-3 py-1 text-white hover:bg-white/15">Monthly plans</Badge>
                         <Badge className="rounded-full bg-white/15 px-3 py-1 text-white hover:bg-white/15">Secure checkout</Badge>
                       </div>
@@ -876,6 +939,11 @@ export const Register = () => {
                       <p className="mt-3 max-w-xl text-sm leading-6 text-white/80">
                         Compare ratings, cuisine style, locality, and signature dishes, then lock the monthly plan that feels right for your everyday meals.
                       </p>
+                      {chefCatalogSource === 'demo' && (
+                        <p className="mt-3 max-w-xl text-xs uppercase tracking-[0.18em] text-white/65">
+                          Demo mode is active because the backend is offline. Admin approvals still sync locally on this device.
+                        </p>
+                      )}
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-3">
@@ -892,15 +960,27 @@ export const Register = () => {
 
                 <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="text-xs font-chef text-emerald-600">Chef Listing</p>
                         <h3 className="mt-1 font-display text-2xl font-semibold text-slate-900">
                           {homeAddress.city.trim() ? `Popular around ${homeAddress.city}` : 'Popular with ZYNK members'}
                         </h3>
                       </div>
-                      <div className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm text-slate-600 shadow-sm">
-                        {loadingChefs ? 'Loading chefs...' : `${chefs.length} chefs available`}
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm text-slate-600 shadow-sm">
+                          {chefCatalogStatusLabel}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="rounded-full border-slate-200 bg-white px-4 text-slate-600"
+                          onClick={() => void loadChefs()}
+                          disabled={loadingChefs}
+                        >
+                          <RefreshCw className={`mr-2 h-4 w-4 ${loadingChefs ? 'animate-spin' : ''}`} />
+                          Refresh
+                        </Button>
                       </div>
                     </div>
 
@@ -910,12 +990,28 @@ export const Register = () => {
                           <div key={card} className="h-48 rounded-[28px] border border-emerald-100 bg-white/70 p-5 shadow-sm animate-pulse" />
                         ))}
                       </div>
+                    ) : chefCatalogOffline ? (
+                      <div className="rounded-[28px] border border-dashed border-slate-200 bg-white px-6 py-10 text-center shadow-sm">
+                        <ChefHat className="mx-auto h-10 w-10 text-slate-300" />
+                        <p className="mt-4 text-lg font-semibold text-slate-900">Live approved-chef catalog is unavailable</p>
+                        <p className="mt-2 text-sm text-slate-500">
+                          Start the backend, then refresh this page. Customers only see chefs here after an admin approves them.
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="mt-5 rounded-full px-6"
+                          onClick={() => void loadChefs()}
+                        >
+                          Try again
+                        </Button>
+                      </div>
                     ) : chefs.length === 0 ? (
                       <div className="rounded-[28px] border border-dashed border-slate-200 bg-white px-6 py-10 text-center shadow-sm">
                         <ChefHat className="mx-auto h-10 w-10 text-slate-300" />
-                        <p className="mt-4 text-lg font-semibold text-slate-900">No approved chefs available yet</p>
+                        <p className="mt-4 text-lg font-semibold text-slate-900">No admin-approved chefs available yet</p>
                         <p className="mt-2 text-sm text-slate-500">
-                          Ask an admin to approve a chef profile, then come back here to continue your subscription.
+                          Ask an admin to review and approve a chef profile, then refresh this step to continue your subscription.
                         </p>
                       </div>
                     ) : (
@@ -975,27 +1071,74 @@ export const Register = () => {
 
                                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                                   <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
-                                    <p className="text-xs font-chef text-emerald-700">Plans from</p>
-                                    <p className="mt-2 text-xl font-semibold text-slate-900">{planOptions[0].price}</p>
+                                    <p className="text-xs font-chef text-emerald-700">Plans start at</p>
+                                    <p className="mt-2 text-xl font-semibold text-slate-900">{getPlanPrice(planOptions[0].id)}</p>
                                   </div>
                                   <div className="rounded-2xl border border-orange-100 bg-orange-50/70 p-4">
-                                    <p className="text-xs font-chef text-orange-700">Flexible till</p>
+                                    <p className="text-xs font-chef text-orange-700">Switch or skip till</p>
                                     <p className="mt-2 text-xl font-semibold text-slate-900">8 PM</p>
                                   </div>
                                 </div>
 
                                 <div className="mt-5">
+                                  <p className="text-xs font-chef text-slate-500">Monthly plans with this chef</p>
+                                  <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                                    {planOptions.map((plan) => {
+                                      const isSelectedPlanForChef = isSelected && selectedPlan === plan.id;
+                                      return (
+                                        <div
+                                          key={`${chef.id}-${plan.id}`}
+                                          className={`rounded-2xl border px-3 py-3 ${
+                                            isSelectedPlanForChef
+                                              ? 'border-emerald-300 bg-emerald-50'
+                                              : 'border-slate-200 bg-slate-50/80'
+                                          }`}
+                                        >
+                                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                            {plan.name}
+                                          </p>
+                                          <p className="mt-2 text-sm font-semibold text-slate-900">{getPlanPrice(plan.id)}</p>
+                                          <p className="mt-1 text-xs text-slate-500">{plan.slots}</p>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+
+                                <div className="mt-5">
                                   <p className="text-xs font-chef text-slate-500">Signature dishes</p>
-                                  <div className="mt-2 flex flex-wrap gap-2">
+                                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
                                     {dishPreview.length > 0 ? (
                                       dishPreview.map((dish) => (
-                                        <span
+                                        <div
                                           key={dish.id}
-                                          className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700"
+                                          className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
                                         >
-                                          <UtensilsCrossed className="h-3 w-3 text-emerald-600" />
-                                          {dish.name}
-                                        </span>
+                                          <div className="flex items-start justify-between gap-3">
+                                            <p className="text-sm font-semibold text-slate-900">{dish.name}</p>
+                                            <Badge
+                                              variant="outline"
+                                              className={`rounded-full text-[10px] uppercase ${
+                                                dish.category === 'veg'
+                                                  ? 'border-emerald-200 text-emerald-700'
+                                                  : 'border-orange-200 text-orange-700'
+                                              }`}
+                                            >
+                                              {dish.category}
+                                            </Badge>
+                                          </div>
+                                          <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">
+                                            {dish.description || 'Chef-curated menu item for your monthly meal plan.'}
+                                          </p>
+                                          <div className="mt-3 flex flex-wrap gap-2">
+                                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600">
+                                              {dish.nutritionalInfo.calories} kcal
+                                            </span>
+                                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600">
+                                              {dish.allowsCustomization ? 'Customizable' : 'Chef fixed'}
+                                            </span>
+                                          </div>
+                                        </div>
                                       ))
                                     ) : (
                                       <span className="text-xs text-slate-500">Dish list will appear here once the chef updates the menu.</span>
@@ -1085,15 +1228,38 @@ export const Register = () => {
                                   );
                                 })
                               ) : (
-                                <div className="flex flex-wrap gap-2">
+                                <div className="grid gap-3 sm:grid-cols-2">
                                   {selectedChefDishPreview.length > 0 ? (
                                     selectedChefDishPreview.map((dish) => (
-                                      <span
+                                      <div
                                         key={`selected-${dish.id}`}
-                                        className="rounded-full border border-emerald-100 bg-white px-3 py-2 text-xs font-medium text-slate-700"
+                                        className="rounded-2xl border border-emerald-100 bg-white p-3 shadow-sm"
                                       >
-                                        {dish.name}
-                                      </span>
+                                        <div className="flex items-start justify-between gap-3">
+                                          <p className="text-sm font-semibold text-slate-900">{dish.name}</p>
+                                          <Badge
+                                            variant="outline"
+                                            className={`rounded-full text-[10px] uppercase ${
+                                              dish.category === 'veg'
+                                                ? 'border-emerald-200 text-emerald-700'
+                                                : 'border-orange-200 text-orange-700'
+                                            }`}
+                                          >
+                                            {dish.category}
+                                          </Badge>
+                                        </div>
+                                        <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">
+                                          {dish.description || 'Chef-curated dish preview.'}
+                                        </p>
+                                        <div className="mt-3 flex flex-wrap gap-2">
+                                          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] text-emerald-700">
+                                            {dish.nutritionalInfo.protein}g protein
+                                          </span>
+                                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600">
+                                            {dish.allowsCustomization ? 'Customizable' : 'Fixed recipe'}
+                                          </span>
+                                        </div>
+                                      </div>
                                     ))
                                   ) : (
                                     <p className="text-sm text-slate-500">Dish preview will appear once the chef uploads signature items.</p>
@@ -1110,7 +1276,9 @@ export const Register = () => {
                           <div className="flex items-center justify-between gap-3">
                             <div>
                               <p className="text-xs font-chef text-slate-500">Choose your plan</p>
-                              <p className="mt-1 text-sm text-slate-600">Tap a plan to compare coverage before checkout.</p>
+                              <p className="mt-1 text-sm text-slate-600">
+                                Select the monthly plan you want with this approved chef before checkout.
+                              </p>
                             </div>
                             {selectedChef && (
                               <Badge className="rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
@@ -1152,7 +1320,7 @@ export const Register = () => {
                                       </p>
                                     </div>
                                     <div className="text-right">
-                                      <p className="text-lg font-semibold text-emerald-700">{plan.price}</p>
+                                      <p className="text-lg font-semibold text-emerald-700">{getPlanPrice(plan.id)}</p>
                                       {isSelectedPlan && <CheckCircle2 className="ml-auto mt-2 h-5 w-5 text-emerald-600" />}
                                     </div>
                                   </div>
@@ -1191,7 +1359,7 @@ export const Register = () => {
                           disabled={!selectedChef}
                           onClick={() => setStep('payment')}
                         >
-                          {selectedChef ? `Continue with ${selectedPlanOption.name}` : 'Select a chef to continue'}
+                          {selectedChef ? `Continue with ${selectedChef.name} / ${selectedPlanOption.name}` : 'Select a chef to continue'}
                         </Button>
                       </div>
                     </div>
@@ -1220,7 +1388,7 @@ export const Register = () => {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Monthly Price</p>
-                    <p className="text-lg font-bold text-primary">{selectedPlanOption.price}</p>
+                    <p className="text-lg font-bold text-primary">{getPlanPrice(selectedPlanOption.id)}</p>
                   </div>
                 </div>
 

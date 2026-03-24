@@ -5,7 +5,9 @@ import * as db from '@/services/db';
 import {
   createChefWorkspaceDish,
   getApiToken,
+  getChefOrders,
   getChefWorkspaceDishes,
+  updateChefOrderStatus,
 } from '@/services/backend';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -162,8 +164,18 @@ export const ChefDashboard = () => {
     ensureLocalChefMirror(chef);
 
     const token = getApiToken();
-    const ordersResponse = api.getChefOrders(chef.id);
-    setOrders(ordersResponse.success ? ordersResponse.data || [] : []);
+    if (token) {
+      const backendOrders = await getChefOrders(token);
+      if (backendOrders.success && backendOrders.orders) {
+        setOrders(backendOrders.orders);
+      } else {
+        const ordersResponse = api.getChefOrders(chef.id);
+        setOrders(ordersResponse.success ? ordersResponse.data || [] : []);
+      }
+    } else {
+      const ordersResponse = api.getChefOrders(chef.id);
+      setOrders(ordersResponse.success ? ordersResponse.data || [] : []);
+    }
 
     let nextDishes: Dish[] = [];
     if (token) {
@@ -346,6 +358,28 @@ export const ChefDashboard = () => {
   const handleUpdateOrderStatus = (orderId: string, status: 'preparing' | 'ready') => {
     if (!chef) return;
     ensureLocalChefMirror(chef);
+
+    const token = getApiToken();
+    if (token) {
+      void (async () => {
+        const response = await updateChefOrderStatus(token, orderId, status);
+        if (response.success) {
+          toast({ title: 'Status updated', description: `Order marked as ${status}.` });
+          await loadData();
+          return;
+        }
+
+        const fallbackResponse = api.updateOrderStatus(chef.id, orderId, status);
+        if (fallbackResponse.success) {
+          toast({ title: 'Status updated', description: `Order marked as ${status}.` });
+          await loadData();
+          return;
+        }
+
+        toast({ title: 'Error', description: response.message || fallbackResponse.error, variant: 'destructive' });
+      })();
+      return;
+    }
 
     const response = api.updateOrderStatus(chef.id, orderId, status);
     if (response.success) {

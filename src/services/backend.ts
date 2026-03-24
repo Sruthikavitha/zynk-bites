@@ -5,7 +5,8 @@ const normalizeApiBase = (value?: string) => {
   if (!trimmed) return null;
 
   try {
-    return new URL(trimmed).toString().replace(/\/$/, '');
+    const normalized = new URL(trimmed).toString().replace(/\/$/, '');
+    return normalized.replace(/\/api$/i, '');
   } catch {
     return null;
   }
@@ -41,7 +42,7 @@ export const getBackendApiBaseUrl = () => API_BASE;
 const TOKEN_KEY = 'zynk_api_token';
 
 const getNetworkErrorMessage = () =>
-  `Unable to reach the backend at ${API_BASE}. Make sure the backend server is running.`;
+  'Unable to reach the backend right now. Please try again in a moment.';
 
 const readJsonSafely = async <T>(response: Response) => {
   try {
@@ -118,6 +119,18 @@ export type BackendAuthUser = {
   fullName: string;
   role: BackendUserRole;
   phone?: string | null;
+  chefBusinessName?: string | null;
+  specialty?: string | null;
+  bio?: string | null;
+  serviceArea?: string | null;
+  isActive?: boolean;
+  createdAt?: string;
+};
+
+export type BackendProfileUser = BackendAuthUser & {
+  chefBusinessName?: string | null;
+  isActive?: boolean;
+  createdAt?: string;
 };
 
 export type BackendAdminChef = {
@@ -148,6 +161,12 @@ type BackendAuthResponse = {
   message?: string;
   token?: string;
   user?: BackendAuthUser;
+};
+
+type BackendProfileResponse = {
+  success: boolean;
+  message?: string;
+  user?: BackendProfileUser;
 };
 
 type BackendNotificationsResponse = {
@@ -204,6 +223,24 @@ export const registerUser = async (payload: {
   }
 
   return data;
+};
+
+export const getCurrentUserProfile = async (token: string) => {
+  const { response, data, error } = await requestJson<BackendProfileResponse>('/api/auth/profile', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response || !data) {
+    return { success: false, user: null as BackendProfileUser | null, message: error || getNetworkErrorMessage() };
+  }
+
+  if (!response.ok || !data.success || !data.user) {
+    return { success: false, user: null as BackendProfileUser | null, message: data.message || 'Failed to load profile' };
+  }
+
+  return { success: true, user: data.user };
 };
 
 export const getSubscriptions = async (token: string): Promise<BackendSubscription[] | null> => {
@@ -312,6 +349,53 @@ export const createChefWorkspaceDish = async (
   }
 
   return { success: true, dish: data.data };
+};
+
+export const getChefOrders = async (token: string) => {
+  const { response, data, error } = await requestJson<{ success: boolean; data?: Order[]; message?: string }>(
+    '/api/chef/orders',
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+
+  if (!response || !data) {
+    return { success: false, orders: null as Order[] | null, message: error || getNetworkErrorMessage() };
+  }
+
+  if (!response.ok || !data.success || !Array.isArray(data.data)) {
+    return { success: false, orders: null as Order[] | null, message: data.message || 'Failed to load chef orders' };
+  }
+
+  return { success: true, orders: data.data };
+};
+
+export const updateChefOrderStatus = async (
+  token: string,
+  orderId: string,
+  status: 'preparing' | 'ready'
+) => {
+  const { response, data, error } = await requestJson<{ success: boolean; data?: Order; message?: string }>(
+    `/api/chef/orders/${orderId}/status`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ status }),
+    }
+  );
+
+  if (!response || !data) {
+    return { success: false, order: null as Order | null, message: error || getNetworkErrorMessage() };
+  }
+
+  if (!response.ok || !data.success || !data.data) {
+    return { success: false, order: null as Order | null, message: data.message || 'Failed to update order status' };
+  }
+
+  return { success: true, order: data.data };
 };
 
 export const getAllMeals = async () => {

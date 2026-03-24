@@ -1,8 +1,8 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import * as api from "@/services/api";
-import { loginUser, setApiToken } from "@/services/backend";
+import { clearApiToken, loginUser, setApiToken } from "@/services/backend";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import type { User } from "@/types";
 import { ArrowRight, Eye, EyeOff, KeyRound, LockKeyhole, Phone, UtensilsCrossed } from "lucide-react";
 
 type LoginAudience = "customer" | "chef";
@@ -17,6 +18,7 @@ const BACKEND_UNREACHABLE_MESSAGE = "Unable to reach the backend";
 
 export const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
   const { toast } = useToast();
 
@@ -29,6 +31,43 @@ export const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const buildAuthenticatedUser = (backendUser: {
+    id: number;
+    email: string;
+    fullName: string;
+    role: "customer" | "chef" | "delivery" | "admin";
+    phone?: string | null;
+    chefBusinessName?: string | null;
+    specialty?: string | null;
+    bio?: string | null;
+    serviceArea?: string | null;
+    isActive?: boolean;
+    createdAt?: string;
+  }) =>
+    ({
+      id: String(backendUser.id),
+      email: backendUser.email,
+      password: "",
+      name: backendUser.fullName,
+      role: backendUser.role,
+      phone: backendUser.phone || undefined,
+      createdAt: backendUser.createdAt || new Date().toISOString(),
+      ...(backendUser.role === "chef"
+        ? {
+            status: backendUser.isActive ? "approved" : "pending",
+            specialty: backendUser.specialty || backendUser.chefBusinessName || undefined,
+            bio: backendUser.bio || undefined,
+            serviceArea: backendUser.serviceArea || undefined,
+          }
+        : {}),
+    }) as User;
+
+  useEffect(() => {
+    const routeState = location.state as { email?: string; redirectTo?: string } | null;
+    if (!routeState?.email) return;
+    setEmail(routeState.email);
+  }, [location.state]);
 
   const handleOtpSend = () => {
     if (!phone.trim()) {
@@ -76,30 +115,26 @@ export const Login = () => {
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    const routeState = location.state as { redirectTo?: string } | null;
+    const redirectTo = routeState?.redirectTo;
 
     try {
       const backendResult = await loginUser(email.trim(), password);
       if (backendResult.success && backendResult.token && backendResult.user) {
         setApiToken(backendResult.token);
-        login({
-          id: String(backendResult.user.id),
-          email: backendResult.user.email,
-          password: "",
-          name: backendResult.user.fullName,
-          role: backendResult.user.role,
-          createdAt: new Date().toISOString(),
-        });
+        login(buildAuthenticatedUser(backendResult.user));
         toast({ title: "Welcome back!", description: `Logged in as ${backendResult.user.fullName}` });
-        navigate(backendResult.user.role === "admin" ? "/admin" : "/dashboard");
+        navigate(redirectTo || (backendResult.user.role === "admin" ? "/admin" : "/dashboard"));
         return;
       }
 
       if (backendResult.message?.includes(BACKEND_UNREACHABLE_MESSAGE)) {
         const mockResponse = api.login(email, password);
         if (mockResponse.success && mockResponse.data) {
+          clearApiToken();
           login(mockResponse.data);
           toast({ title: "Welcome back!", description: `Logged in as ${mockResponse.data.name} (demo mode)` });
-          navigate("/dashboard");
+          navigate(redirectTo || (mockResponse.data.role === "admin" ? "/admin" : "/dashboard"));
           return;
         }
 

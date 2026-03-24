@@ -5,6 +5,20 @@ import { getUserByEmail, createUser, emailExists } from '../models/userQueries.j
 import { RegisterRequest, LoginRequest, AuthResponse } from '../types/auth.js';
 import { notifyChefApprovalRequested } from '../services/notificationService.js';
 
+const mapAuthUser = (user: Awaited<ReturnType<typeof getUserByEmail>> extends infer T ? NonNullable<T> : never) => ({
+  id: user.id,
+  email: user.email,
+  fullName: user.fullName,
+  role: user.role,
+  phone: user.phone,
+  chefBusinessName: user.chefBusinessName,
+  specialty: user.specialty,
+  bio: user.bio,
+  serviceArea: user.serviceArea,
+  isActive: user.isActive,
+  createdAt: user.createdAt,
+});
+
 // Register a new user (customer or chef)
 export const register = async (req: express.Request, res: express.Response): Promise<void> => {
   try {
@@ -66,22 +80,14 @@ export const register = async (req: express.Request, res: express.Response): Pro
       message: isChefRegistration
         ? 'Chef application submitted. Awaiting admin approval before going live.'
         : 'Customer registered successfully',
-      user: {
-        id: newUser.id,
-        email: newUser.email,
-        fullName: newUser.fullName,
-        role: newUser.role,
-      },
+      user: mapAuthUser(newUser),
     };
 
-    if (!isChefRegistration) {
-      // Generate JWT token only for immediately active customer accounts
-      response.token = signToken({
-        userId: newUser.id,
-        email: newUser.email,
-        role: newUser.role,
-      });
-    }
+    response.token = signToken({
+      userId: newUser.id,
+      email: newUser.email,
+      role: newUser.role,
+    });
 
     res.status(201).json(response);
   } catch (error: any) {
@@ -111,10 +117,10 @@ export const login = async (req: express.Request, res: express.Response): Promis
     }
 
     // Check if account is active
-    if (!user.isActive) {
+    if (!user.isActive && user.role !== 'chef') {
       res.status(403).json({
         success: false,
-        message: user.role === 'chef' ? 'Chef application is pending admin approval' : 'Account is inactive',
+        message: 'Account is inactive',
       });
       return;
     }
@@ -137,14 +143,9 @@ export const login = async (req: express.Request, res: express.Response): Promis
     // Return success response
     const response: AuthResponse = {
       success: true,
-      message: 'Login successful',
+      message: user.role === 'chef' && !user.isActive ? 'Chef application is pending admin approval' : 'Login successful',
       token,
-      user: {
-        id: user.id,
-        email: user.email,
-        fullName: user.fullName,
-        role: user.role,
-      },
+      user: mapAuthUser(user),
     };
 
     res.status(200).json(response);

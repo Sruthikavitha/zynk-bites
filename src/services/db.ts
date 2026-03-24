@@ -268,26 +268,44 @@ const initialDatabase: Database = {
   reviews: [],
 };
 
+const mergeSeededRecords = <T extends { id: string }>(existing: T[] = [], seeded: T[] = []) => {
+  const merged = [...existing];
+  seeded.forEach((record) => {
+    if (!merged.some((item) => item.id === record.id)) {
+      merged.push(record);
+    }
+  });
+  return merged;
+};
+
 // Read database from localStorage
 export const readDatabase = (): Database => {
   try {
     const data = localStorage.getItem(DB_KEY);
     if (data) {
       const parsed = JSON.parse(data);
-      // Ensure dishes array exists for backwards compatibility
-      if (!parsed.dishes) {
-        parsed.dishes = sampleDishes;
-      }
-      if (parsed.users) {
-        parsed.users = parsed.users.map((u: User) => {
+      const migrated: Database = {
+        users: mergeSeededRecords(parsed.users || [], initialDatabase.users),
+        subscriptions: parsed.subscriptions || [],
+        meals: mergeSeededRecords(parsed.meals || [], initialDatabase.meals),
+        dishes: mergeSeededRecords(parsed.dishes || [], initialDatabase.dishes),
+        dailyMeals: parsed.dailyMeals || [],
+        orders: parsed.orders || [],
+        reviews: parsed.reviews || [],
+      };
+
+      if (migrated.users) {
+        migrated.users = migrated.users.map((u: User) => {
           if (u.role === 'chef') {
             const chef = u as Chef;
-            return { ...chef, menuCharts: chef.menuCharts || [] };
+            const seededChef = sampleChefs.find((item) => item.id === chef.id);
+            return { ...chef, menuCharts: chef.menuCharts?.length ? chef.menuCharts : seededChef?.menuCharts || [] };
           }
           return u;
         });
       }
-      return parsed;
+      writeDatabase(migrated);
+      return migrated;
     }
     // Initialize with default data
     writeDatabase(initialDatabase);

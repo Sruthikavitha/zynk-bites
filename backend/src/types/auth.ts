@@ -10,6 +10,13 @@ export interface AuthResponse {
     email: string;
     fullName: string;
     role: 'customer' | 'chef' | 'delivery' | 'admin';
+    phone?: string | null;
+    chefBusinessName?: string | null;
+    specialty?: string | null;
+    bio?: string | null;
+    serviceArea?: string | null;
+    isActive?: boolean;
+    createdAt?: Date | string;
   };
 }
 
