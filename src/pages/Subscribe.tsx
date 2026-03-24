@@ -144,7 +144,26 @@ export const Subscribe = () => {
       }
     ];
 
-    setChefs(mockChefs as ChefWithData[]);
+    const localApprovedResponse = api.getApprovedChefs();
+    const localApprovedChefs = localApprovedResponse.success ? localApprovedResponse.data || [] : [];
+    
+    const dynamicChefs = localApprovedChefs.map(chef => {
+      const dishesResp = api.getChefDishes(chef.id);
+      const dishes = dishesResp.success ? dishesResp.data || [] : [];
+      return {
+        ...chef,
+        dishes,
+        avgRating: chef.rating || 5.0,
+        reviewCount: chef.totalOrders || 0,
+      };
+    });
+
+    const allChefs = [...mockChefs, ...dynamicChefs];
+    const uniqueChefsMap = new Map();
+    allChefs.forEach(c => uniqueChefsMap.set(c.id, c));
+    const finalChefs = Array.from(uniqueChefsMap.values());
+
+    setChefs(finalChefs as ChefWithData[]);
   }, []);
 
   useEffect(() => {
