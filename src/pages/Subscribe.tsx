@@ -173,17 +173,6 @@ export const Subscribe = () => {
 
   const handlePayment = async () => {
     if (!user) return;
-
-    if (selectedChefId.startsWith('mock-chef-')) {
-      setLoading(true);
-      setTimeout(() => {
-        toast({ title: 'Mock Payment successful', description: 'Your subscription is now active (Local Mock Mode).' });
-        navigate('/dashboard');
-        setLoading(false);
-      }, 1500);
-      return;
-    }
-
     const token = getApiToken();
     if (!token) {
       toast({
@@ -221,20 +210,28 @@ export const Subscribe = () => {
       };
 
       // Step 4: Create order on backend
-      const orderRes = await fetch(`${apiBase}/api/payment/create-order`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          amount: planAmounts[plan] || 449900,
-          currency: 'INR',
-          plan,
-        }),
-      });
-
-      const orderData = await orderRes.json();
+      let orderData;
+      if (selectedChefId.startsWith('mock-chef-')) {
+        orderData = {
+          success: true,
+          order: { amount: planAmounts[plan] || 449900, id: 'order_mock_123' },
+          keyId: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_STz4joVjA8LzYP'
+        };
+      } else {
+        const orderRes = await fetch(`${apiBase}/api/payment/create-order`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            amount: planAmounts[plan] || 449900,
+            currency: 'INR',
+            plan,
+          }),
+        });
+        orderData = await orderRes.json();
+      }
 
       if (!orderData.success || !orderData.order) {
         toast({
@@ -263,15 +260,21 @@ export const Subscribe = () => {
       setLoading(false);
 
       // Step 6: Open Razorpay popup
-      const options: RazorpayOptions = {
+      const options: any = {
         key: razorpayKey,
         amount: orderData.order.amount,
         currency: 'INR',
         name: 'ZYNK Bites',
         description: `${plan} subscription`,
-        order_id: orderData.order.id,
-        handler: async (response) => {
+        ...(selectedChefId.startsWith('mock-chef-') ? {} : { order_id: orderData.order.id }),
+        handler: async (response: RazorpayHandlerResponse) => {
           try {
+            if (selectedChefId.startsWith('mock-chef-')) {
+              toast({ title: '🎉 Payment Successful!', description: 'Your subscription is now active (Mock Mode).' });
+              navigate('/dashboard');
+              return;
+            }
+
             const verifyRes = await fetch(`${apiBase}/api/payment/verify`, {
               method: 'POST',
               headers: {

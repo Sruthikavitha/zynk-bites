@@ -661,26 +661,21 @@ export const Register = () => {
     setIsLoading(true);
 
     try {
+      let customerSession;
       if (selectedChefId.startsWith('mock-chef-')) {
-        setTimeout(() => {
-          toast({ title: 'Mock Payment successful', description: 'Your subscription is now active (Local Mock Mode).' });
-          persistAuthenticatedCustomer({
-            id: 999,
-            email: email.trim() || 'mock@example.com',
-            fullName: name.trim() || 'Mock User',
-            role: 'customer'
-          }, 'mock-jwt-token-123');
-          setIsLoading(false);
-          navigate('/dashboard');
-        }, 1500);
-        return;
+        customerSession = {
+          success: true,
+          token: 'mock-token',
+          user: { id: 999, email: email.trim() || 'mock@example.com', fullName: name.trim() || 'Mock User', role: 'customer' }
+        } as any;
+      } else {
+        customerSession = await ensureBackendCustomerSession();
       }
 
-      const customerSession = await ensureBackendCustomerSession();
-      if (!customerSession.success) {
+      if (!customerSession || !customerSession.success) {
         toast({
           title: 'Registration failed',
-          description: customerSession.message,
+          description: customerSession?.message || 'Unable to register you.',
           variant: 'destructive',
         });
         setIsLoading(false);
@@ -697,24 +692,34 @@ export const Register = () => {
         apiBase = `${window.location.protocol}//${window.location.hostname}:3002`;
       }
 
-      const orderRes = await fetch(`${apiBase}/api/payment/create-order`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${customerSession.token}`,
-        },
-        body: JSON.stringify({
-          amount: planAmounts[selectedPlan] || planAmounts.standard,
-          currency: 'INR',
-          plan: selectedPlan,
-        }),
-      });
-      const orderData = await orderRes.json();
+      
+      let orderData;
+      if (selectedChefId.startsWith('mock-chef-')) {
+        orderData = {
+          success: true,
+          order: { amount: planAmounts[selectedPlan] || planAmounts.standard, id: 'order_mock_123' },
+          keyId: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_STz4joVjA8LzYP'
+        };
+      } else {
+        const orderRes = await fetch(`${apiBase}/api/payment/create-order`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${customerSession.token}`,
+          },
+          body: JSON.stringify({
+            amount: planAmounts[selectedPlan] || planAmounts.standard,
+            currency: 'INR',
+            plan: selectedPlan,
+          }),
+        });
+        orderData = await orderRes.json();
+      }
 
-      if (!orderRes.ok || !orderData.success || !orderData.order) {
+      if (!orderData || !orderData.success || !orderData.order) {
         toast({
           title: 'Payment setup failed',
-          description: orderData.message || 'Unable to create a Razorpay order.',
+          description: orderData?.message || 'Unable to create a Razorpay order.',
           variant: 'destructive',
         });
         setIsLoading(false);
@@ -734,15 +739,22 @@ export const Register = () => {
 
       setIsLoading(false);
 
-      const options = {
+      const options: any = {
         key: razorpayKey,
         amount: orderData.order.amount,
         currency: 'INR',
         name: 'ZYNK Bites',
         description: `${selectedPlanOption.name} subscription`,
-        order_id: orderData.order.id,
+        ...(selectedChefId.startsWith('mock-chef-') ? {} : { order_id: orderData.order.id }),
         handler: async (response: RazorpayHandlerResponse) => {
           try {
+            if (selectedChefId.startsWith('mock-chef-')) {
+              persistAuthenticatedCustomer(customerSession.user, customerSession.token);
+              toast({ title: 'Payment successful', description: 'Your subscription is now active (Mock Mode).' });
+              navigate('/dashboard');
+              return;
+            }
+
             const verifyRes = await fetch(`${apiBase}/api/payment/verify`, {
               method: 'POST',
               headers: {
