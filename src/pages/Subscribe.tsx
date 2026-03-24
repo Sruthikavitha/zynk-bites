@@ -70,7 +70,80 @@ export const Subscribe = () => {
 
   const loadChefs = useCallback(async () => {
     const backendChefs = await getBackendChefs();
-    setChefs((backendChefs || []) as ChefWithData[]);
+    if (backendChefs && backendChefs.length > 0) {
+      setChefs(backendChefs as ChefWithData[]);
+      return;
+    }
+
+    const mockChefs: any[] = [
+      {
+        id: 'mock-chef-1',
+        name: 'Chef Sanjeev',
+        email: 'sanjeev@example.com',
+        role: 'chef',
+        status: 'approved',
+        rating: 4.8,
+        totalOrders: 154,
+        specialty: 'North Indian, Punjabi',
+        avgRating: 4.8,
+        reviewCount: 124,
+        serviceArea: 'Coimbatore Central',
+        dishes: [
+          { id: 'd1', name: 'Paneer Butter Masala', category: 'veg', chefId: 'mock-chef-1', description: 'Rich paneer dish', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 350, protein: 12, carbs: 10, fat: 28 } },
+          { id: 'd2', name: 'Garlic Naan', category: 'veg', chefId: 'mock-chef-1', description: 'Soft naan', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 150, protein: 4, carbs: 20, fat: 5 } },
+          { id: 'd3', name: 'Dal Makhani', category: 'veg', chefId: 'mock-chef-1', description: 'Creamy dal', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 250, protein: 8, carbs: 30, fat: 12 } },
+        ]
+      },
+      {
+        id: 'mock-chef-2',
+        name: 'Chef Meenakshi',
+        specialty: 'South Indian, Chettinad',
+        rating: 4.9,
+        avgRating: 4.9,
+        reviewCount: 189,
+        dishes: [
+          { id: 'd4', name: 'Chettinad Chicken', category: 'non-veg', chefId: 'mock-chef-2', description: 'Spicy chicken curry', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 400, protein: 25, carbs: 10, fat: 20 } },
+          { id: 'd5', name: 'Mutton Chukka', category: 'non-veg', chefId: 'mock-chef-2', description: 'Dry roasted mutton', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 450, protein: 28, carbs: 5, fat: 25 } },
+        ]
+      },
+      {
+        id: 'mock-chef-3',
+        name: 'Chef Rajesh',
+        specialty: 'Continental, Italian',
+        rating: 4.6,
+        avgRating: 4.6,
+        reviewCount: 45,
+        dishes: [
+          { id: 'd6', name: 'Pesto Pasta', category: 'veg', chefId: 'mock-chef-3', description: 'Creamy basil pesto', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 500, protein: 15, carbs: 60, fat: 20 } },
+          { id: 'd7', name: 'Garlic Bread', category: 'veg', chefId: 'mock-chef-3', description: 'Toasted loaded bread', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 200, protein: 5, carbs: 30, fat: 10 } },
+        ]
+      },
+      {
+        id: 'mock-chef-4',
+        name: 'Chef Priya',
+        specialty: 'Healthy, Salads',
+        rating: 4.7,
+        avgRating: 4.7,
+        reviewCount: 92,
+        dishes: [
+          { id: 'd8', name: 'Quinoa Salad', category: 'veg', chefId: 'mock-chef-4', description: 'Fresh veggies and quinoa', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 250, protein: 12, carbs: 30, fat: 8 } },
+          { id: 'd9', name: 'Grilled Cauliflower Steaks', category: 'veg', chefId: 'mock-chef-4', description: 'Spiced and grilled', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 180, protein: 6, carbs: 15, fat: 10 } },
+        ]
+      },
+      {
+        id: 'mock-chef-5',
+        name: 'Chef Anand',
+        specialty: 'Keto, Low Carb',
+        rating: 4.5,
+        avgRating: 4.5,
+        reviewCount: 38,
+        dishes: [
+          { id: 'd10', name: 'Keto Chicken Bowl', category: 'non-veg', chefId: 'mock-chef-5', description: 'Chicken with avocado', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 400, protein: 35, carbs: 8, fat: 25 } },
+        ]
+      }
+    ];
+
+    setChefs(mockChefs as ChefWithData[]);
   }, []);
 
   useEffect(() => {
@@ -100,6 +173,17 @@ export const Subscribe = () => {
 
   const handlePayment = async () => {
     if (!user) return;
+
+    if (selectedChefId.startsWith('mock-chef-')) {
+      setLoading(true);
+      setTimeout(() => {
+        toast({ title: 'Mock Payment successful', description: 'Your subscription is now active (Local Mock Mode).' });
+        navigate('/dashboard');
+        setLoading(false);
+      }, 1500);
+      return;
+    }
+
     const token = getApiToken();
     if (!token) {
       toast({

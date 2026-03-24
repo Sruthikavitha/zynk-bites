@@ -56,7 +56,7 @@ const hasAnyAddressField = (address: Address) =>
 const isAddressComplete = (address: Address) =>
   [address.street, address.city, address.state, address.zipCode].every((value) => value.trim().length > 0);
 
-const isLiveChefId = (chefId: string | null) => Boolean(chefId && /^\d+$/.test(chefId));
+const isLiveChefId = (chefId: string | null) => Boolean(chefId && (/^\d+$/.test(chefId) || chefId.startsWith('mock-chef-')));
 
 type RazorpayHandlerResponse = {
   razorpay_order_id: string;
@@ -339,8 +339,156 @@ export const Register = () => {
         return;
       }
 
-      setChefs([]);
-      setHasLiveChefCatalog(false);
+      const mockChefs: any[] = [
+        {
+          id: 'mock-chef-1',
+          name: 'Chef Sanjeev',
+          email: 'sanjeev@example.com',
+          role: 'chef',
+          status: 'approved',
+          rating: 4.8,
+          totalOrders: 154,
+          specialty: 'North Indian, Punjabi',
+          avgRating: 4.8,
+          reviewCount: 124,
+          serviceArea: 'Coimbatore Central',
+          dishes: [
+            { id: 'd1', name: 'Paneer Butter Masala', category: 'veg', chefId: 'mock-chef-1', description: 'Rich paneer dish', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 350, protein: 12, carbs: 10, fat: 28 } },
+            { id: 'd2', name: 'Garlic Naan', category: 'veg', chefId: 'mock-chef-1', description: 'Soft naan', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 150, protein: 4, carbs: 20, fat: 5 } },
+            { id: 'd3', name: 'Dal Makhani', category: 'veg', chefId: 'mock-chef-1', description: 'Creamy dal', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 250, protein: 8, carbs: 30, fat: 12 } },
+          ],
+          reviews: [],
+          menuCharts: [
+            {
+              id: 'mc1',
+              chefId: 'mock-chef-1',
+              month: 'March',
+              year: 2026,
+              days: [
+                { date: new Date().toISOString().split('T')[0], slots: { lunch: { mealId: 'd1' }, dinner: { mealId: 'd3' } } }
+              ]
+            }
+          ]
+        },
+        {
+          id: 'mock-chef-2',
+          name: 'Chef Meenakshi',
+          email: 'meenakshi@example.com',
+          role: 'chef',
+          status: 'approved',
+          rating: 4.9,
+          totalOrders: 210,
+          specialty: 'South Indian, Chettinad',
+          avgRating: 4.9,
+          reviewCount: 189,
+          serviceArea: 'RS Puram',
+          dishes: [
+            { id: 'd4', name: 'Chettinad Chicken', category: 'non-veg', chefId: 'mock-chef-2', description: 'Spicy chicken curry', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 400, protein: 25, carbs: 10, fat: 20 } },
+            { id: 'd5', name: 'Mutton Chukka', category: 'non-veg', chefId: 'mock-chef-2', description: 'Dry roasted mutton', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 450, protein: 28, carbs: 5, fat: 25 } },
+          ],
+          reviews: [],
+          menuCharts: [
+            {
+              id: 'mc2',
+              chefId: 'mock-chef-2',
+              month: 'March',
+              year: 2026,
+              days: [
+                { date: new Date().toISOString().split('T')[0], slots: { lunch: { mealId: 'd4' }, dinner: { mealId: 'd5' } } }
+              ]
+            }
+          ]
+        },
+        {
+          id: 'mock-chef-3',
+          name: 'Chef Rajesh',
+          email: 'rajesh@example.com',
+          role: 'chef',
+          status: 'approved',
+          rating: 4.6,
+          totalOrders: 89,
+          specialty: 'Continental, Italian',
+          avgRating: 4.6,
+          reviewCount: 45,
+          serviceArea: 'Peelamedu',
+          dishes: [
+            { id: 'd6', name: 'Pesto Pasta', category: 'veg', chefId: 'mock-chef-3', description: 'Creamy basil pesto', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 500, protein: 15, carbs: 60, fat: 20 } },
+            { id: 'd7', name: 'Garlic Bread', category: 'veg', chefId: 'mock-chef-3', description: 'Toasted loaded bread', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 200, protein: 5, carbs: 30, fat: 10 } },
+          ],
+          reviews: [],
+          menuCharts: [
+            {
+              id: 'mc3',
+              chefId: 'mock-chef-3',
+              month: 'March',
+              year: 2026,
+              days: [
+                { date: new Date().toISOString().split('T')[0], slots: { lunch: { mealId: 'd6' }, dinner: { mealId: 'd7' } } }
+              ]
+            }
+          ]
+        },
+        {
+          id: 'mock-chef-4',
+          name: 'Chef Priya',
+          email: 'priya@example.com',
+          role: 'chef',
+          status: 'approved',
+          rating: 4.7,
+          totalOrders: 130,
+          specialty: 'Healthy, Salads',
+          avgRating: 4.7,
+          reviewCount: 92,
+          serviceArea: 'Saibaba Colony',
+          dishes: [
+            { id: 'd8', name: 'Quinoa Salad', category: 'veg', chefId: 'mock-chef-4', description: 'Fresh veggies and quinoa', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 250, protein: 12, carbs: 30, fat: 8 } },
+            { id: 'd9', name: 'Grilled Cauliflower Steaks', category: 'veg', chefId: 'mock-chef-4', description: 'Spiced and grilled', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 180, protein: 6, carbs: 15, fat: 10 } },
+          ],
+          reviews: [],
+          menuCharts: [
+            {
+              id: 'mc4',
+              chefId: 'mock-chef-4',
+              month: 'March',
+              year: 2026,
+              days: [
+                { date: new Date().toISOString().split('T')[0], slots: { lunch: { mealId: 'd8' }, dinner: { mealId: 'd9' } } }
+              ]
+            }
+          ]
+        },
+        {
+          id: 'mock-chef-5',
+          name: 'Chef Anand',
+          email: 'anand@example.com',
+          role: 'chef',
+          status: 'approved',
+          rating: 4.5,
+          totalOrders: 65,
+          specialty: 'Keto, Low Carb',
+          avgRating: 4.5,
+          reviewCount: 38,
+          serviceArea: 'Vadavalli',
+          dishes: [
+            { id: 'd10', name: 'Keto Chicken Bowl', category: 'non-veg', chefId: 'mock-chef-5', description: 'Chicken with avocado', isActive: true, allowsCustomization: false, nutritionalInfo: { calories: 400, protein: 35, carbs: 8, fat: 25 } },
+          ],
+          reviews: [],
+          menuCharts: [
+            {
+              id: 'mc5',
+              chefId: 'mock-chef-5',
+              month: 'March',
+              year: 2026,
+              days: [
+                { date: new Date().toISOString().split('T')[0], slots: { lunch: { mealId: 'd10' }, dinner: { mealId: 'd10' } } }
+              ]
+            }
+          ]
+        }
+      ];
+
+      setChefs(mockChefs as ChefWithData[]);
+      setHasLiveChefCatalog(true);
     } finally {
       setLoadingChefs(false);
     }
@@ -513,6 +661,21 @@ export const Register = () => {
     setIsLoading(true);
 
     try {
+      if (selectedChefId.startsWith('mock-chef-')) {
+        setTimeout(() => {
+          toast({ title: 'Mock Payment successful', description: 'Your subscription is now active (Local Mock Mode).' });
+          persistAuthenticatedCustomer({
+            id: 999,
+            email: email.trim() || 'mock@example.com',
+            fullName: name.trim() || 'Mock User',
+            role: 'customer'
+          }, 'mock-jwt-token-123');
+          setIsLoading(false);
+          navigate('/dashboard');
+        }, 1500);
+        return;
+      }
+
       const customerSession = await ensureBackendCustomerSession();
       if (!customerSession.success) {
         toast({
@@ -975,8 +1138,8 @@ export const Register = () => {
 
                                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                                   <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
-                                    <p className="text-xs font-chef text-emerald-700">Plans from</p>
-                                    <p className="mt-2 text-xl font-semibold text-slate-900">{planOptions[0].price}</p>
+                                    <p className="text-xs font-chef text-emerald-700">{selectedPlanOption.name} Price</p>
+                                    <p className="mt-2 text-xl font-semibold text-slate-900">{selectedPlanOption.price}</p>
                                   </div>
                                   <div className="rounded-2xl border border-orange-100 bg-orange-50/70 p-4">
                                     <p className="text-xs font-chef text-orange-700">Flexible till</p>
