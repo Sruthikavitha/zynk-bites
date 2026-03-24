@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowRight, Eye, EyeOff, KeyRound, LockKeyhole, Phone, UtensilsCrossed } from "lucide-react";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 type LoginAudience = "customer" | "chef";
 const BACKEND_UNREACHABLE_MESSAGE = "Unable to reach the backend";
@@ -200,14 +201,13 @@ export const Login = () => {
                       {otpSent && (
                         <div className="space-y-2">
                           <Label htmlFor="otp">4-digit OTP</Label>
-                          <Input
-                            id="otp"
-                            value={otp}
-                            onChange={(event) => setOtp(event.target.value)}
-                            placeholder="1234"
-                            maxLength={4}
-                            className="h-12 rounded-2xl tracking-[0.4em]"
-                          />
+                          <InputOTP maxLength={4} value={otp} onChange={setOtp}>
+                            <InputOTPGroup className="gap-2">
+                              {Array.from({ length: 4 }).map((_, i) => (
+                                <InputOTPSlot key={i} index={i} className="h-12 w-12 rounded-xl border-emerald-200 text-lg" />
+                              ))}
+                            </InputOTPGroup>
+                          </InputOTP>
                         </div>
                       )}
 

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import {
   ArrowRight,
   Banknote,
@@ -117,8 +118,14 @@ const ChefDashboard = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <Input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="Phone number" />
-                <Input value={otp} onChange={(event) => setOtp(event.target.value)} placeholder="Enter OTP" />
+                <Input className="h-12" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="Phone number" />
+                <InputOTP maxLength={4} value={otp} onChange={setOtp}>
+                  <InputOTPGroup className="gap-2">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <InputOTPSlot key={i} index={i} className="h-12 w-12 rounded-xl border-emerald-200 text-lg" />
+                    ))}
+                  </InputOTPGroup>
+                </InputOTP>
               </div>
               <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
                 Swiggy/Zomato-style partner onboarding starts with a quick phone verification. Use this as the first trust-building step before KYC and payout setup.
