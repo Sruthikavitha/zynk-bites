@@ -597,9 +597,23 @@ export const Register = () => {
         });
       } else {
         if (response.message?.includes(BACKEND_UNREACHABLE_MESSAGE)) {
+          try {
+            api.registerChef(
+              email.trim() || `mockchef${Date.now()}@example.com`,
+              password || 'testpass123',
+              name.trim() || 'Mock Chef',
+              specialty.trim() || undefined,
+              bio.trim() || undefined,
+              isAddressComplete(kitchenLocation) ? kitchenLocation : undefined,
+              serviceArea.trim() || undefined,
+              ['lunch', 'dinner']
+            );
+          } catch (e) {
+            console.error('Failed to register mock chef', e);
+          }
           toast({
-            title: 'Opening chef workspace in draft mode',
-            description: 'The backend could not be reached, so your chef profile is not submitted yet. Start the backend to save and send it for admin approval.',
+            title: 'Application submitted (Mock Mode)',
+            description: 'Your chef profile is pending admin approval in Mock Mode.',
           });
           navigate('/chef-partner', {
             state: {
